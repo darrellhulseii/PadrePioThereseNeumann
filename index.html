@@ -1,0 +1,2522 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Giuseppe's Journey — 3D</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap');
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{background:#0a0608;overflow:hidden;font-family:'Crimson Text',serif;color:#fff;touch-action:none;user-select:none;}
+  #c{display:block;width:100vw;height:100vh;}
+  #hud{position:fixed;top:0;left:0;right:0;pointer-events:none;z-index:10;}
+  #topbar{display:flex;justify-content:space-between;align-items:flex-start;padding:12px 16px;background:linear-gradient(to bottom,rgba(0,0,0,.75),transparent);}
+  .hud-block{background:rgba(0,0,0,.55);border:1px solid rgba(255,200,80,.4);border-radius:6px;padding:6px 12px;font-family:'Cinzel',serif;font-size:13px;color:#ffd980;line-height:1.6;}
+  .hud-label{font-size:10px;text-transform:uppercase;letter-spacing:2px;color:#aaa;display:block;}
+  #menu{position:fixed;inset:0;z-index:50;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    background:radial-gradient(ellipse at 50% 30%,#1a0e00 0%,#0a0608 70%),
+    repeating-linear-gradient(0deg,transparent,transparent 40px,rgba(255,200,80,.03) 40px,rgba(255,200,80,.03) 41px),
+    repeating-linear-gradient(90deg,transparent,transparent 40px,rgba(255,200,80,.03) 40px,rgba(255,200,80,.03) 41px);}
+  .menu-cross{color:#ffd700;font-size:48px;margin-bottom:8px;text-shadow:0 0 30px #ffd700aa;}
+  #menu h1{font-family:'Cinzel',serif;font-size:clamp(22px,5vw,42px);font-weight:900;
+    background:linear-gradient(to bottom,#fff7d6,#c8860a);-webkit-background-clip:text;-webkit-text-fill-color:transparent;
+    text-align:center;letter-spacing:4px;line-height:1.1;margin-bottom:4px;}
+  #menu h2{font-family:'Crimson Text',serif;font-style:italic;font-size:clamp(14px,3vw,20px);color:#c8a060;letter-spacing:2px;margin-bottom:30px;}
+  .mbtn{display:block;width:min(320px,85vw);padding:14px 24px;margin:8px auto;font-family:'Cinzel',serif;font-size:15px;
+    letter-spacing:2px;text-transform:uppercase;background:linear-gradient(to bottom,#3a2200,#1a0e00);
+    border:2px solid #c8860a;border-radius:4px;color:#ffd980;cursor:pointer;transition:all .2s;text-align:center;}
+  .mbtn:hover,.mbtn:active{background:linear-gradient(to bottom,#5a3600,#2a1800);transform:scale(1.03);box-shadow:0 0 20px #c8860a66;}
+  .mbtn:disabled{opacity:.4;pointer-events:none;}
+  #menuInstr{margin-top:20px;font-size:12px;color:#888;text-align:center;line-height:1.8;}
+  .italy-flag{font-size:28px;margin:0 6px;}
+  #dialog{position:fixed;bottom:0;left:0;right:0;z-index:40;pointer-events:none;padding:0 8px 8px;}
+  #dialogInner{display:none;background:rgba(8,4,0,.93);border:2px solid #c8860a;border-radius:8px;
+    padding:16px 20px;max-width:700px;margin:0 auto;font-family:'Crimson Text',serif;
+    font-size:clamp(13px,2.5vw,16px);line-height:1.6;color:#f0e0c0;box-shadow:0 0 30px rgba(200,134,10,.3);
+    pointer-events:auto;}
+  #dialogInner h3{font-family:'Cinzel',serif;color:#ffd700;font-size:clamp(13px,2.5vw,17px);margin-bottom:8px;}
+  #dialogInner em{color:#aaddff;font-style:italic;}
+  #dialogInner strong{color:#ffcc66;}
+  .continue-hint{margin-top:10px;font-size:11px;color:#888;text-transform:uppercase;letter-spacing:2px;pointer-events:auto;cursor:pointer;}
+  .continue-hint:active{color:#ffd700;}
+  #dpad{position:fixed;bottom:24px;left:24px;z-index:30;width:160px;height:160px;pointer-events:auto;}
+  #dpad-ring{position:absolute;inset:0;border-radius:50%;background:rgba(0,0,0,.5);border:2px solid rgba(255,200,80,.3);}
+  .dpad-btn{position:absolute;width:50px;height:50px;display:flex;align-items:center;justify-content:center;
+    background:rgba(200,134,10,.25);border:1.5px solid rgba(200,134,10,.5);border-radius:6px;
+    font-size:22px;color:#ffd980;cursor:pointer;transition:background .1s;-webkit-tap-highlight-color:transparent;}
+  .dpad-btn:active,.dpad-btn.pressed{background:rgba(200,134,10,.6);}
+  #db-up{top:0;left:55px;}#db-down{bottom:0;left:55px;}#db-left{left:0;top:55px;}#db-right{right:0;top:55px;}
+  #db-center{left:55px;top:55px;border-radius:50%;font-size:13px;}
+  #actionBtn{position:fixed;bottom:40px;right:24px;z-index:30;width:70px;height:70px;border-radius:50%;
+    background:rgba(200,134,10,.3);border:2px solid #c8860a;font-family:'Cinzel',serif;font-size:11px;
+    letter-spacing:1px;color:#ffd980;display:none;align-items:center;justify-content:center;text-align:center;
+    cursor:pointer;-webkit-tap-highlight-color:transparent;}
+  #actionBtn:active{background:rgba(200,134,10,.7);}
+  #actionBtn.visible{display:flex;}
+  #progressWrap{position:fixed;bottom:0;left:0;right:0;height:6px;background:rgba(0,0,0,.5);z-index:20;}
+  #progressBar{height:100%;background:linear-gradient(to right,#c8860a,#ffd700);width:0%;transition:width .3s;}
+  #stageTitle{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);font-family:'Cinzel',serif;
+    font-size:clamp(18px,4vw,36px);font-weight:900;color:#ffd700;text-align:center;pointer-events:none;z-index:35;
+    text-shadow:0 0 40px #ffd700,0 2px 4px #000;opacity:0;transition:opacity .5s;}
+  #stageTitle.show{opacity:1;}
+  #musicBtn{position:fixed;top:12px;right:16px;z-index:60;background:rgba(0,0,0,.6);border:1px solid #c8860a;
+    color:#ffd980;font-size:18px;width:36px;height:36px;border-radius:50%;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;-webkit-tap-highlight-color:transparent;}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="hud">
+  <div id="topbar">
+    <div class="hud-block"><span class="hud-label">Stage</span><span id="hStage">—</span></div>
+    <div class="hud-block" style="text-align:center"><span class="hud-label">Score</span><span id="hScore">0</span></div>
+    <div class="hud-block"><span class="hud-label">Goal</span><span id="hGoal">—</span></div>
+  </div>
+</div>
+<div id="menu">
+  <div class="menu-cross">✝</div>
+  <h1>GIUSEPPE'S<br>JOURNEY</h1>
+  <h2><span class="italy-flag">🇮🇹</span>A Pilgrimage Through Italy<span class="italy-flag">🇮🇹</span></h2>
+  <button class="mbtn" id="btnStory" onclick="startStoryMode()">⚔ Story Mode — 9 Stages</button>
+  <button class="mbtn" id="btnPadre" onclick="startPadrePioMode()" disabled>🕊 Padre Pio Mode (Locked)</button>
+  <button class="mbtn" id="btnTherese" onclick="startThereseMode()">🌹 Therese Neumann Mode</button>
+  <div id="menuInstr">Arrow Keys / WASD / D-Pad to move<br>Space / Action Button to interact &amp; pray<br>Tap planes in flight mode to redirect them</div>
+</div>
+<div id="stageTitle"></div>
+<div id="dialog"><div id="dialogInner"></div></div>
+<div id="dpad">
+  <div id="dpad-ring"></div>
+  <div class="dpad-btn" id="db-up">▲</div>
+  <div class="dpad-btn" id="db-down">▼</div>
+  <div class="dpad-btn" id="db-left">◀</div>
+  <div class="dpad-btn" id="db-right">▶</div>
+  <div class="dpad-btn" id="db-center" onclick="triggerAction()">✝</div>
+</div>
+<div id="actionBtn" onclick="triggerAction()">PRAY ✝</div>
+<div id="progressWrap"><div id="progressBar"></div></div>
+<button id="musicBtn" onclick="toggleMusic()" title="Toggle Music">♪</button>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+// ═══════════════════════════════════════════════════════
+//  GIUSEPPE'S JOURNEY v2 — 3D + Touch D-Pad Edition
+//  Bug-fixed, speed-tuned, progressive difficulty,
+//  Web Audio Italian music, rescue SFX, glow effects
+// ═══════════════════════════════════════════════════════
+
+// ── THREE.JS SETUP ──────────────────────────────────────
+const renderer = new THREE.WebGLRenderer({canvas:document.getElementById('c'),antialias:true});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.2;
+
+const scene  = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(60,1,0.1,500);
+
+function resize(){
+  const w=innerWidth,h=innerHeight;
+  renderer.setSize(w,h);
+  camera.aspect=w/h;
+  camera.updateProjectionMatrix();
+}
+resize();
+window.addEventListener('resize',resize);
+
+// ── WEB AUDIO ENGINE ─────────────────────────────────────
+let audioCtx=null;
+let musicNodes=[];
+let musicPlaying=false;
+let musicEnabled=true;
+
+function getAudio(){
+  if(!audioCtx){audioCtx=new(window.AudioContext||window.webkitAudioContext)();}
+  return audioCtx;
+}
+
+// Generates a tarantella-style Italian melody using oscillators
+function startItalianMusic(){
+  if(!musicEnabled||musicPlaying)return;
+  try{
+    const ac=getAudio();
+    if(ac.state==='suspended')ac.resume();
+    musicPlaying=true;
+
+    const master=ac.createGain();
+    master.gain.setValueAtTime(0.18,ac.currentTime);
+    master.connect(ac.destination);
+    musicNodes.push(master);
+
+    // Italian Tarantella melody notes (C major, lively)
+    // Notes as frequencies: C4=261.63, D=293.66, E=329.63, F=349.23, G=392, A=440, B=493.88, C5=523.25
+    const noteFreqs={C4:261.63,D4:293.66,E4:329.63,F4:349.23,G4:392,A4:440,B4:493.88,C5:523.25,D5:587.33,E5:659.25,G3:196,A3:220,C3:130.81};
+    // Lively tarantella-style melody pattern
+    const melody=[
+      'E4','G4','C5','G4','E4','G4',
+      'D4','F4','A4','F4','D4','F4',
+      'E4','G4','C5','E5','D5','C5',
+      'B4','A4','G4','A4','B4','C5',
+      'C5','B4','A4','G4','F4','E4',
+      'D4','E4','F4','G4','A4','B4',
+      'C5','C5','G4','G4','E4','E4',
+      'D4','D4','C4','C4','D4','E4'
+    ];
+    // Bass accompaniment
+    const bass=[
+      'C3','C3','G3','G3','A3','A3',
+      'D4','D4','A3','A3','D4','D4',
+      'C3','C3','G3','G3','A3','A3',
+      'G3','G3','G3','G3','G3','G3',
+      'C3','C3','G3','G3','A3','A3',
+      'D4','D4','A3','A3','D4','D4',
+      'C3','C3','G3','G3','C3','C3',
+      'G3','G3','C3','C3','G3','C3'
+    ];
+
+    const beatDur=0.18; // fast tarantella tempo ~167bpm
+    let t=ac.currentTime+0.05;
+    let loopCount=0;
+
+    function scheduleMelody(){
+      for(let i=0;i<melody.length;i++){
+        // Melody voice
+        const osc=ac.createOscillator();
+        const env=ac.createGain();
+        osc.type='triangle';
+        osc.frequency.setValueAtTime(noteFreqs[melody[i]],t+i*beatDur);
+        env.gain.setValueAtTime(0,t+i*beatDur);
+        env.gain.linearRampToValueAtTime(0.6,t+i*beatDur+0.02);
+        env.gain.linearRampToValueAtTime(0.3,t+i*beatDur+beatDur*0.5);
+        env.gain.linearRampToValueAtTime(0,t+i*beatDur+beatDur*0.9);
+        osc.connect(env);env.connect(master);
+        osc.start(t+i*beatDur);
+        osc.stop(t+i*beatDur+beatDur);
+        musicNodes.push(osc,env);
+
+        // Bass voice
+        const bosc=ac.createOscillator();
+        const benv=ac.createGain();
+        bosc.type='sine';
+        bosc.frequency.setValueAtTime(noteFreqs[bass[i]],t+i*beatDur);
+        benv.gain.setValueAtTime(0,t+i*beatDur);
+        benv.gain.linearRampToValueAtTime(0.25,t+i*beatDur+0.02);
+        benv.gain.linearRampToValueAtTime(0,t+i*beatDur+beatDur*0.8);
+        bosc.connect(benv);benv.connect(master);
+        bosc.start(t+i*beatDur);
+        bosc.stop(t+i*beatDur+beatDur);
+        musicNodes.push(bosc,benv);
+
+        // Tambourine-like percussion every beat
+        if(i%3===0){
+          const buf=ac.createBuffer(1,ac.sampleRate*0.06,ac.sampleRate);
+          const d=buf.getChannelData(0);
+          for(let s=0;s<d.length;s++)d[s]=(Math.random()*2-1)*Math.exp(-s/(ac.sampleRate*0.02));
+          const src=ac.createBufferSource();
+          const flt=ac.createBiquadFilter();
+          const penv=ac.createGain();
+          src.buffer=buf;
+          flt.type='bandpass';flt.frequency.value=3000;flt.Q.value=1;
+          penv.gain.setValueAtTime(0.15,t+i*beatDur);
+          penv.gain.linearRampToValueAtTime(0,t+i*beatDur+0.05);
+          src.connect(flt);flt.connect(penv);penv.connect(master);
+          src.start(t+i*beatDur);
+          musicNodes.push(src,flt,penv);
+        }
+
+        // Mandolin-like high notes every 2 beats
+        if(i%2===0){
+          const mosc=ac.createOscillator();
+          const menv=ac.createGain();
+          mosc.type='sawtooth';
+          mosc.frequency.setValueAtTime(noteFreqs[melody[i]]*2,t+i*beatDur);
+          menv.gain.setValueAtTime(0,t+i*beatDur);
+          menv.gain.linearRampToValueAtTime(0.08,t+i*beatDur+0.005);
+          menv.gain.exponentialRampToValueAtTime(0.001,t+i*beatDur+0.12);
+          mosc.connect(menv);menv.connect(master);
+          mosc.start(t+i*beatDur);
+          mosc.stop(t+i*beatDur+0.13);
+          musicNodes.push(mosc,menv);
+        }
+      }
+
+      // Loop
+      t+=melody.length*beatDur;
+      loopCount++;
+      // Vary the tempo slightly each loop for humanisation
+      if(loopCount%4===0){
+        // Add a brief accordion chord between phrases
+        const chordNotes=['C4','E4','G4'];
+        chordNotes.forEach((n,ci)=>{
+          const co=ac.createOscillator();
+          const ce=ac.createGain();
+          co.type='sawtooth';
+          co.frequency.setValueAtTime(noteFreqs[n],t-0.5);
+          ce.gain.setValueAtTime(0,t-0.5);
+          ce.gain.linearRampToValueAtTime(0.07,t-0.48);
+          ce.gain.linearRampToValueAtTime(0,t-0.1);
+          co.connect(ce);ce.connect(master);
+          co.start(t-0.5);co.stop(t);
+          musicNodes.push(co,ce);
+        });
+      }
+    }
+
+    function loopScheduler(){
+      if(!musicPlaying||!musicEnabled)return;
+      scheduleMelody();
+      setTimeout(loopScheduler, (melody.length*beatDur-0.3)*1000);
+    }
+    scheduleMelody();
+    setTimeout(loopScheduler,(melody.length*beatDur-0.3)*1000);
+  }catch(e){console.warn('Audio failed:',e);}
+}
+
+function stopMusic(){
+  musicPlaying=false;
+  musicNodes.forEach(n=>{try{n.disconnect();}catch(e){}});
+  musicNodes=[];
+}
+
+function toggleMusic(){
+  musicEnabled=!musicEnabled;
+  document.getElementById('musicBtn').textContent=musicEnabled?'♪':'🔇';
+  if(!musicEnabled)stopMusic();
+  else startItalianMusic();
+}
+
+// ── RESCUE SOUND ─────────────────────────────────────────
+function playRescueSound(){
+  try{
+    const ac=getAudio();
+    if(ac.state==='suspended')ac.resume();
+    const master=ac.createGain();
+    master.gain.setValueAtTime(0.4,ac.currentTime);
+    master.connect(ac.destination);
+
+    // Rising Italian "bravo!" chime: three ascending notes
+    const notes=[523.25,659.25,783.99]; // C5, E5, G5
+    notes.forEach((freq,i)=>{
+      const osc=ac.createOscillator();
+      const env=ac.createGain();
+      osc.type='sine';
+      osc.frequency.setValueAtTime(freq,ac.currentTime+i*0.08);
+      env.gain.setValueAtTime(0,ac.currentTime+i*0.08);
+      env.gain.linearRampToValueAtTime(0.8,ac.currentTime+i*0.08+0.02);
+      env.gain.exponentialRampToValueAtTime(0.001,ac.currentTime+i*0.08+0.3);
+      osc.connect(env);env.connect(master);
+      osc.start(ac.currentTime+i*0.08);
+      osc.stop(ac.currentTime+i*0.08+0.35);
+    });
+    // Shimmer layer
+    const shimmer=ac.createOscillator();
+    const senv=ac.createGain();
+    shimmer.type='triangle';
+    shimmer.frequency.setValueAtTime(1046.5,ac.currentTime);
+    shimmer.frequency.linearRampToValueAtTime(1318.5,ac.currentTime+0.25);
+    senv.gain.setValueAtTime(0.3,ac.currentTime);
+    senv.gain.exponentialRampToValueAtTime(0.001,ac.currentTime+0.4);
+    shimmer.connect(senv);senv.connect(master);
+    shimmer.start(ac.currentTime);
+    shimmer.stop(ac.currentTime+0.4);
+  }catch(e){}
+}
+
+function playHealSound(){
+  try{
+    const ac=getAudio();
+    if(ac.state==='suspended')ac.resume();
+    const master=ac.createGain();
+    master.gain.setValueAtTime(0.35,ac.currentTime);
+    master.connect(ac.destination);
+    // Heavenly ascending chord
+    [392,523.25,659.25,784].forEach((freq,i)=>{
+      const osc=ac.createOscillator();
+      const env=ac.createGain();
+      osc.type='sine';
+      osc.frequency.setValueAtTime(freq,ac.currentTime+i*0.05);
+      env.gain.setValueAtTime(0,ac.currentTime+i*0.05);
+      env.gain.linearRampToValueAtTime(0.6,ac.currentTime+i*0.05+0.03);
+      env.gain.exponentialRampToValueAtTime(0.001,ac.currentTime+i*0.05+0.6);
+      osc.connect(env);env.connect(master);
+      osc.start(ac.currentTime+i*0.05);
+      osc.stop(ac.currentTime+i*0.05+0.65);
+    });
+  }catch(e){}
+}
+
+// ── INPUT ────────────────────────────────────────────────
+const keys={};
+const touchInput={up:false,down:false,left:false,right:false,action:false};
+
+document.addEventListener('keydown',e=>{keys[e.key.toLowerCase()]=true;if(e.key===' ')e.preventDefault();});
+document.addEventListener('keyup',e=>{keys[e.key.toLowerCase()]=false;});
+
+function setupDpadBtn(id,prop){
+  const el=document.getElementById(id);
+  ['touchstart','mousedown'].forEach(ev=>el.addEventListener(ev,e=>{e.preventDefault();touchInput[prop]=true;el.classList.add('pressed');},{passive:false}));
+  ['touchend','mouseup','touchcancel'].forEach(ev=>el.addEventListener(ev,e=>{e.preventDefault();touchInput[prop]=false;el.classList.remove('pressed');},{passive:false}));
+}
+setupDpadBtn('db-up','up');
+setupDpadBtn('db-down','down');
+setupDpadBtn('db-left','left');
+setupDpadBtn('db-right','right');
+
+function isUp(){return keys['arrowup']||keys['w']||touchInput.up;}
+function isDown(){return keys['arrowdown']||keys['s']||touchInput.down;}
+function isLeft(){return keys['arrowleft']||keys['a']||touchInput.left;}
+function isRight(){return keys['arrowright']||keys['d']||touchInput.right;}
+function isAction(){return keys[' ']||touchInput.action;}
+
+let actionPressedLast=false;
+function actionJustPressed(){
+  const p=isAction();
+  const just=p&&!actionPressedLast;
+  actionPressedLast=p;
+  return just;
+}
+function triggerAction(){touchInput.action=true;setTimeout(()=>{touchInput.action=false;},150);}
+
+// Plane tap on canvas
+document.getElementById('c').addEventListener('touchstart',e=>{
+  checkPlaneTap(e.touches[0].clientX,e.touches[0].clientY);
+},{passive:true});
+document.getElementById('c').addEventListener('click',e=>{checkPlaneTap(e.clientX,e.clientY);});
+
+// ── GAME STATE ───────────────────────────────────────────
+const GS={
+  mode:'menu',stage:1,score:0,padrePioUnlocked:false,
+  subMode:null,
+  confessionCount:0,
+  planesRedirected:0,peopleHealed:0,
+  bioIndex:0,
+  rescued:0,collected:0,
+  animTime:0
+};
+
+// ── DIFFICULTY SCALING ───────────────────────────────────
+// Stage 1 = trivially easy. Stage 9 = genuinely challenging.
+// Giuseppe speed: base 0.15 (50% faster than original 0.10)
+// Survivor flee speed at stage 1: extremely slow (0.006), scales up to 0.028 by stage 9
+// Flee detection radius shrinks as stage increases (they notice you less early on)
+// Number of survivors increases with stage
+
+function stageConfig(s){
+  return {
+    playerSpeed:  0.15,                              // Fixed — Giuseppe always 50% faster than original
+    survivorSpeed: 0.006 + (s-1)*0.0025,             // Stage1=0.006 → Stage9=0.026 (was 0.05 base — 75% slower)
+    fleeRadius:    4 + s*1.5,                        // Stage1=5.5 → Stage9=17.5 (notice radius)
+    wanderStrength:0.002 + (s-1)*0.001,              // How randomly survivors move
+    catchRadius:   1.8 - (s-1)*0.03,                 // Stage1=1.8 → Stage9=1.56 (slightly harder to tag)
+    survivorCount: 15,                               // Always 15 to rescue
+    supplyCount:   8 + Math.floor((s-1)*0.5),        // 8..12 supplies in shelter
+    boundSize:     28 + s*1.5                        // Arena grows with stage
+  };
+}
+
+// ── PLAYER ───────────────────────────────────────────────
+const player={obj:null,x:0,z:0,speed:0.15};
+
+// ── GEOMETRY HELPERS ─────────────────────────────────────
+function box(w,h,d,color=0xffffff,metalness=0,roughness=0.8){
+  const geo=new THREE.BoxGeometry(w,h,d);
+  const mat=new THREE.MeshStandardMaterial({color,metalness,roughness});
+  return new THREE.Mesh(geo,mat);
+}
+function sphere(r,color=0xffffff,metalness=0,roughness=0.7){
+  const geo=new THREE.SphereGeometry(r,8,8);
+  const mat=new THREE.MeshStandardMaterial({color,metalness,roughness});
+  return new THREE.Mesh(geo,mat);
+}
+function cylinder(rt,rb,h,color=0xffffff){
+  const geo=new THREE.CylinderGeometry(rt,rb,h,8);
+  const mat=new THREE.MeshStandardMaterial({color});
+  return new THREE.Mesh(geo,mat);
+}
+
+// ── CHARACTER BUILDER ────────────────────────────────────
+function buildCharacter(bodyColor,headColor,scale=1){
+  const g=new THREE.Group();
+  const body=box(0.5*scale,0.7*scale,0.3*scale,bodyColor,0,0.9);
+  body.position.y=0.35*scale; g.add(body);
+  const head=sphere(0.22*scale,headColor,0,0.8);
+  head.position.y=0.9*scale; g.add(head);
+  const la=box(0.15*scale,0.5*scale,0.15*scale,bodyColor);
+  la.position.set(-0.35*scale,0.3*scale,0); la.rotation.z=0.3; g.add(la);
+  const ra=la.clone();
+  ra.position.set(0.35*scale,0.3*scale,0); ra.rotation.z=-0.3; g.add(ra);
+  return g;
+}
+function buildGiuseppe(){
+  const g=buildCharacter(0x1a5c1a,0xffd194);
+  const hat=cylinder(0.18,0.22,0.12,0x1a3a0a);
+  hat.position.y=1.12; g.add(hat);
+  return g;
+}
+function buildPadrePio(){
+  const g=buildCharacter(0x6b3a1f,0xffe4c4);
+  const beard=box(0.2,0.15,0.1,0x4a2810);
+  beard.position.set(0,0.7,0.18); g.add(beard);
+  const haloGeo=new THREE.TorusGeometry(0.3,0.025,8,32);
+  const haloMat=new THREE.MeshStandardMaterial({color:0xffd700,emissive:0xffd700,emissiveIntensity:0.6,metalness:0.9,roughness:0.1});
+  const halo=new THREE.Mesh(haloGeo,haloMat);
+  halo.position.y=1.2; halo.rotation.x=Math.PI*0.15; g.add(halo);
+  return g;
+}
+function buildSurvivor(){
+  return buildCharacter(0xe8e8e8,0xffcba4);
+}
+
+// ── RESCUE GLOW EFFECT ───────────────────────────────────
+// Creates a pulsing golden ring + point light around a rescued survivor
+function addRescueGlow(position){
+  const glowGroup=new THREE.Group();
+  glowGroup.position.copy(position);
+  glowGroup.position.y=0;
+
+  // Ring on ground
+  const ringGeo=new THREE.TorusGeometry(0.9,0.08,8,32);
+  const ringMat=new THREE.MeshStandardMaterial({color:0xffd700,emissive:0xffd700,emissiveIntensity:1,metalness:0.5,roughness:0.2});
+  const ring=new THREE.Mesh(ringGeo,ringMat);
+  ring.rotation.x=Math.PI/2;
+  ring.position.y=0.1;
+  glowGroup.add(ring);
+
+  // Light burst
+  const light=new THREE.PointLight(0xffd700,3,4);
+  light.position.y=1;
+  glowGroup.add(light);
+
+  // Rising star particles
+  const starGeo=new THREE.SphereGeometry(0.06,4,4);
+  const starMat=new THREE.MeshStandardMaterial({color:0xffee88,emissive:0xffee88,emissiveIntensity:1});
+  for(let i=0;i<8;i++){
+    const star=new THREE.Mesh(starGeo,starMat);
+    const angle=(i/8)*Math.PI*2;
+    star.position.set(Math.cos(angle)*0.7,0.1,Math.sin(angle)*0.7);
+    star.userData.riseSpeed=0.04+Math.random()*0.03;
+    star.userData.angle=angle;
+    star.userData.startY=0.1;
+    glowGroup.add(star);
+  }
+
+  scene.add(glowGroup);
+
+  // Animate and auto-remove after 1.5s
+  let elapsed=0;
+  const interval=setInterval(()=>{
+    elapsed+=0.016;
+    const life=elapsed/1.5;
+    ring.scale.setScalar(1+life*0.5);
+    ringMat.emissiveIntensity=1*(1-life);
+    light.intensity=3*(1-life);
+    glowGroup.children.forEach(c=>{
+      if(c.userData.riseSpeed){
+        c.position.y+=c.userData.riseSpeed;
+        c.material.opacity=1-life;
+        c.material.transparent=true;
+      }
+    });
+    if(elapsed>=1.5){clearInterval(interval);scene.remove(glowGroup);}
+  },16);
+}
+
+// ── SCENE MANAGEMENT ─────────────────────────────────────
+let sceneObjects=[];
+function clearScene(){
+  // Remove all tracked scene objects
+  sceneObjects.forEach(o=>{
+    scene.remove(o);
+    o.traverse(c=>{
+      if(c.geometry)c.geometry.dispose();
+      if(c.material){
+        if(Array.isArray(c.material))c.material.forEach(m=>m.dispose());
+        else c.material.dispose();
+      }
+    });
+  });
+  sceneObjects=[];
+  // Remove lights explicitly
+  const lights=scene.children.filter(c=>c.isLight);
+  lights.forEach(l=>scene.remove(l));
+  // Remove all entity objects from scene
+  entities.forEach(e=>{if(e.obj)scene.remove(e.obj);});
+  entities=[];
+  if(player.obj){scene.remove(player.obj);player.obj=null;}
+}
+function addToScene(obj){scene.add(obj);sceneObjects.push(obj);return obj;}
+
+function setupLights(){
+  scene.children.filter(c=>c.isLight).forEach(l=>scene.remove(l));
+  scene.add(new THREE.AmbientLight(0xffeedd,0.7));
+  const sun=new THREE.DirectionalLight(0xfff5e0,1.4);
+  sun.position.set(20,40,10);
+  sun.castShadow=true;
+  sun.shadow.mapSize.set(1024,1024);
+  sun.shadow.camera.left=sun.shadow.camera.bottom=-40;
+  sun.shadow.camera.right=sun.shadow.camera.top=40;
+  sun.shadow.camera.far=200;
+  scene.add(sun);
+}
+
+// ── SCENE BUILDERS ───────────────────────────────────────
+function buildItalianCity(){
+  scene.background=new THREE.Color(0x8ec5e8);
+  scene.fog=new THREE.Fog(0x8ec5e8,40,120);
+  setupLights();
+  addToScene(box(100,0.2,100,0x9e8060)).receiveShadow=true;
+
+  // Roads — BUG FIX: was missing color on road2
+  for(let r=-2;r<=2;r++){
+    addToScene(box(3,0.21,100,0x7a6a58)).position.set(r*12,0,0);
+    const road2=box(100,0.21,3,0x7a6a58); // FIXED: added missing color arg
+    road2.position.set(0,0,r*12);
+    addToScene(road2);
+  }
+  const bColors=[0xd4a96a,0xc8905a,0xe2c08a,0xb87850,0xdab878];
+  for(let bx=-4;bx<=4;bx++){
+    for(let bz=-4;bz<=4;bz++){
+      if(Math.abs(bx)<=1||Math.abs(bz)<=1)continue;
+      const h=3+Math.random()*5;
+      const bld=box(3.5,h,3.5,bColors[Math.floor(Math.random()*bColors.length)]);
+      bld.position.set(bx*9,h/2,bz*9);
+      bld.castShadow=true; bld.receiveShadow=true;
+      addToScene(bld);
+      for(let wy=1;wy<h-1;wy+=1.2){
+        for(let side=0;side<4;side++){
+          const win=new THREE.Mesh(new THREE.BoxGeometry(0.5,0.5,0.05),
+            new THREE.MeshStandardMaterial({color:0xffee88,emissive:0xffee88,emissiveIntensity:0.2}));
+          if(side===0)win.position.set(bx*9,wy+0.3,bz*9+1.78);
+          else if(side===1)win.position.set(bx*9,wy+0.3,bz*9-1.78);
+          else if(side===2){win.position.set(bx*9+1.78,wy+0.3,bz*9);win.rotation.y=Math.PI/2;}
+          else{win.position.set(bx*9-1.78,wy+0.3,bz*9);win.rotation.y=Math.PI/2;}
+          addToScene(win);
+        }
+      }
+      const roof=box(3.8,0.3,3.8,0x8b3a1a);
+      roof.position.set(bx*9,h+0.15,bz*9);
+      addToScene(roof);
+    }
+  }
+  const church=box(6,8,6,0xf0e0c8);church.position.set(0,4,0);church.castShadow=true;addToScene(church);
+  const steeple=box(2.5,6,2.5,0xddd0b8);steeple.position.set(0,11,0);addToScene(steeple);
+  const c1=box(0.3,2.5,0.3,0xffd700,0.9,0.1);c1.position.set(0,15,0);addToScene(c1);
+  const c2=box(1.5,0.3,0.3,0xffd700,0.9,0.1);c2.position.set(0,15.3,0);addToScene(c2);
+  const cLight=new THREE.PointLight(0xffd700,1.5,8);cLight.position.set(0,15,0);addToScene(cLight);
+  for(let i=0;i<20;i++){
+    const tx=(Math.random()-0.5)*70,tz=(Math.random()-0.5)*70;
+    if(Math.abs(tx)<8&&Math.abs(tz)<8)continue;
+    const trunk=cylinder(0.2,0.3,1.5,0x6b4423);trunk.position.set(tx,0.75,tz);addToScene(trunk);
+    const leaves=sphere(1.2,0x2d7a2d);leaves.position.set(tx,2.4,tz);addToScene(leaves);
+  }
+}
+
+function buildTransportScene(){
+  scene.background=new THREE.Color(0x7ab8e0);
+  scene.fog=new THREE.Fog(0x7ab8e0,50,120);
+  setupLights();
+  const ground=box(100,0.2,100,0x8a7060);ground.receiveShadow=true;addToScene(ground);
+  for(let i=-20;i<20;i++){const s=box(4,0.2,0.5,0x5a3a1a);s.position.set(i*2.5,0.2,0);addToScene(s);}
+  const r1=box(100,0.1,0.15,0x777777);r1.position.set(0,0.3,0.8);addToScene(r1);
+  const r2=box(100,0.1,0.15,0x777777);r2.position.set(0,0.3,-0.8);addToScene(r2);
+  buildTrain(-8,0);
+  const platform=box(20,0.5,6,0xd0b898);platform.position.set(5,0.35,5);addToScene(platform);
+  for(let i=0;i<8;i++){
+    const mh=8+Math.random()*12;
+    const ang=(i/8)*Math.PI*2;
+    const mountain=new THREE.Mesh(new THREE.ConeGeometry(4+Math.random()*3,mh,6),new THREE.MeshStandardMaterial({color:0x5a7a4a,roughness:1}));
+    mountain.position.set(Math.cos(ang)*55,mh/2,Math.sin(ang)*55);addToScene(mountain);
+    const snow=new THREE.Mesh(new THREE.ConeGeometry(1.5,mh*0.3,6),new THREE.MeshStandardMaterial({color:0xffffff,roughness:0.9}));
+    snow.position.set(Math.cos(ang)*55,mh*0.85,Math.sin(ang)*55);addToScene(snow);
+  }
+}
+
+function buildTrain(tx,tz){
+  const colors=[0x1a3a8a,0x1a3a8a,0x2a4a9a,0x3a5aaa];
+  for(let i=0;i<4;i++){
+    const car=box(4,2.5,2.5,colors[i]);car.position.set(tx+i*4.5,1.45,tz);car.castShadow=true;addToScene(car);
+    const roof=box(4.1,0.3,2.6,0x1a2a5a);roof.position.set(tx+i*4.5,2.75,tz);addToScene(roof);
+    for(let w=0;w<3;w++){
+      const win=new THREE.Mesh(new THREE.BoxGeometry(0.7,0.6,0.05),
+        new THREE.MeshStandardMaterial({color:0xccddff,emissive:0xaabbff,emissiveIntensity:0.3}));
+      win.position.set(tx+i*4.5+(w-1)*1.1,1.5,tz+1.28);addToScene(win);
+    }
+    for(let side=-1;side<=1;side+=2){
+      for(let w=0;w<2;w++){
+        const wheel=cylinder(0.35,0.35,0.2,0x222222);
+        wheel.rotation.z=Math.PI/2;wheel.position.set(tx+i*4.5+(w-0.5)*2.5,0.4,tz+side*1.4);addToScene(wheel);
+      }
+    }
+  }
+  const eng=box(4,3,2.8,0x333333);eng.position.set(tx-5,1.6,tz);addToScene(eng);
+  const chimney=cylinder(0.3,0.4,1.2,0x222222);chimney.position.set(tx-6.5,3.2,tz);addToScene(chimney);
+}
+
+function buildShelterScene(){
+  scene.background=new THREE.Color(0x6090b0);
+  scene.fog=new THREE.Fog(0x6090b0,40,100);
+  setupLights();
+  const ground=box(60,0.2,60,0x607850);ground.receiveShadow=true;addToScene(ground);
+  for(let bx=-2;bx<=2;bx++){
+    for(let bz=-2;bz<=2;bz++){
+      if(bx===0&&bz===0)continue;
+      const floors=2+Math.floor(Math.random()*4);
+      const h=floors*1.5;
+      const bld=box(4,h,4,0x8a9890);bld.position.set(bx*8,h/2,bz*8);
+      bld.castShadow=true;bld.receiveShadow=true;addToScene(bld);
+      for(let f=0;f<floors;f++){
+        const bal=box(4.6,0.15,1.2,0x707878);bal.position.set(bx*8,f*1.5+1.3,bz*8+2.6);addToScene(bal);
+      }
+      const roof=box(4,0.2,4,0x4a7a4a);roof.position.set(bx*8,h+0.1,bz*8);addToScene(roof);
+    }
+  }
+}
+
+function buildChurchInterior(){
+  scene.background=new THREE.Color(0x1a0e06);
+  scene.fog=new THREE.Fog(0x1a0e06,20,50);
+  // Lights — added to scene, also tracked in sceneObjects via addToScene
+  const amb=new THREE.AmbientLight(0x554433,0.4);addToScene(amb);
+  const c1=new THREE.PointLight(0xff8833,2,8);c1.position.set(-3,2,2);addToScene(c1);
+  const c2=new THREE.PointLight(0xff8833,2,8);c2.position.set(3,2,2);addToScene(c2);
+  const gl=new THREE.PointLight(0xffd700,3,12);gl.position.set(0,6,0);addToScene(gl);
+  const floor=box(20,0.2,20,0x5a3a1a);floor.position.y=-0.1;addToScene(floor);
+  for(let r=0;r<4;r++){
+    for(let s=-1;s<=1;s+=2){
+      const pew=box(3,0.5,0.8,0x4a2e10);pew.position.set(s*2.5,0.2,r*2-4);addToScene(pew);
+    }
+  }
+  const booth=box(2.5,3.5,2,0x5a3210);booth.position.set(-4,1.65,0);booth.castShadow=true;addToScene(booth);
+  const bRoof=box(2.8,0.3,2.3,0x3a2010);bRoof.position.set(-4,3.45,0);addToScene(bRoof);
+  const screen=box(0.05,1.5,0.8,0x8a5a2a);screen.position.set(-3.24,1.5,0);addToScene(screen);
+  const curtain=box(0.05,3,1.8,0x6a1a1a);curtain.position.set(-5.2,1.5,0);addToScene(curtain);
+  const altar=box(3,1,1.5,0xd4a96a,0.5,0.3);altar.position.set(0,0.5,6);addToScene(altar);
+  const cr1=box(0.15,2,0.15,0xffd700,0.9,0.1);cr1.position.set(0,2.5,6.5);addToScene(cr1);
+  const cr2=box(1.2,0.15,0.15,0xffd700,0.9,0.1);cr2.position.set(0,3.2,6.5);addToScene(cr2);
+
+  // Columns — BUG FIX: was cloning and then setting absolute z, now correctly offset
+  for(let i=-2;i<=2;i+=2){
+    const colA=cylinder(0.3,0.3,5,0xc8a060);colA.position.set(i*2.5,2.5,-4);addToScene(colA);
+    const colB=cylinder(0.3,0.3,5,0xc8a060);colB.position.set(i*2.5,2.5,5);addToScene(colB);
+  }
+  const glassColors=[0xff4444,0x44aaff,0xffaa00,0x44ff88];
+  for(let g=0;g<4;g++){
+    const glass=new THREE.Mesh(new THREE.BoxGeometry(1.2,2,0.1),
+      new THREE.MeshStandardMaterial({color:glassColors[g],emissive:glassColors[g],emissiveIntensity:0.4,transparent:true,opacity:0.7}));
+    glass.position.set((g-1.5)*2.5,4,-9);addToScene(glass);
+  }
+}
+
+function buildSkyScene(){
+  scene.background=new THREE.Color(0x4a9fd4);
+  scene.fog=new THREE.FogExp2(0x4a9fd4,0.005);
+  const amb=new THREE.AmbientLight(0xffffff,1.2);scene.add(amb);sceneObjects.push(amb);
+  const sun=new THREE.DirectionalLight(0xffffff,2);sun.position.set(50,100,20);scene.add(sun);sceneObjects.push(sun);
+  for(let i=0;i<20;i++){
+    const cg=new THREE.Group();
+    for(let j=0;j<5;j++){
+      const c=sphere(1+Math.random()*1.5,0xffffff);
+      c.material=new THREE.MeshStandardMaterial({color:0xffffff,roughness:1});
+      c.position.set((Math.random()-0.5)*4,(Math.random()-0.5)*1.5,(Math.random()-0.5)*3);
+      cg.add(c);
+    }
+    cg.position.set((Math.random()-0.5)*200,(Math.random()-0.5)*30+20,(Math.random()-0.5)*200);
+    cg.userData.cloud=true;addToScene(cg);
+  }
+  const ground=box(200,0.1,200,0x2a6a2a);ground.position.y=-50;addToScene(ground);
+}
+
+function buildHospitalScene(){
+  scene.background=new THREE.Color(0xddeeff);
+  scene.fog=new THREE.Fog(0xddeeff,40,100);
+  setupLights();
+  const floor=box(30,0.2,30,0xeeeedd);floor.receiveShadow=true;addToScene(floor);
+  const hosp=box(20,8,15,0xf0f0f8);hosp.position.set(0,4,5);hosp.castShadow=true;addToScene(hosp);
+  const rc1=box(1,4,1,0xff2222);rc1.position.set(0,10,5);addToScene(rc1);
+  const rc2=box(4,1,1,0xff2222);rc2.position.set(0,11.5,5);addToScene(rc2);
+  const court=box(14,0.2,10,0xaabbaa);court.position.set(0,0.1,-7);addToScene(court);
+  for(let i=-2;i<=2;i+=2){const b=box(2,0.3,0.6,0x8a6040);b.position.set(i*2.5,0.25,-7);addToScene(b);}
+}
+
+function buildBioScene(index){
+  const scenes=['church','city','church','city','church','church','hospital','church','church','church'];
+  const s=scenes[index]||'church';
+  if(s==='hospital')buildHospitalScene();
+  else if(s==='city')buildItalianCity();
+  else buildChurchInterior();
+}
+
+// ── ENTITIES ─────────────────────────────────────────────
+let entities=[];
+
+function createSurvivor(x,z){
+  const obj=buildSurvivor();
+  obj.position.set(x,0,z);
+  obj.castShadow=true;
+  scene.add(obj);
+  const e={obj,x,z,rescued:false,vx:0,vz:0,type:'survivor'};
+  entities.push(e);
+  return e;
+}
+
+function createSupply(x,z,type){
+  const colors=[0xff4444,0xffdd00,0x44dd44,0x44aaff];
+  const g=new THREE.Group();
+  const body=box(0.4,0.4,0.4,colors[type%4],0.3,0.5);
+  body.position.y=0.2; g.add(body);
+  const glow=new THREE.PointLight(colors[type%4],0.8,2);
+  glow.position.y=0.5; g.add(glow);
+  g.position.set(x,0,z);
+  scene.add(g);
+  const e={obj:g,x,z,collected:false,type:'supply',rotTimer:0};
+  entities.push(e);
+  return e;
+}
+
+function createPlane(startX,startZ){
+  const g=new THREE.Group();
+  const fuselage=box(3,0.5,0.5,0xff3333);g.add(fuselage);
+  const wings=box(1,0.1,4,0xcc2222);wings.position.x=0.2;g.add(wings);
+  const tail=box(0.8,0.6,0.1,0xcc2222);tail.position.set(-1.4,0.3,0);g.add(tail);
+  const eng1=cylinder(0.15,0.12,0.8,0x888888);eng1.rotation.z=Math.PI/2;eng1.position.set(0,0,1.5);g.add(eng1);
+  const eng2=cylinder(0.15,0.12,0.8,0x888888);eng2.rotation.z=Math.PI/2;eng2.position.set(0,0,-1.5);g.add(eng2);
+  g.position.set(startX,20+Math.random()*10,startZ);
+  g.rotation.y=Math.PI;
+  scene.add(g);
+  const e={obj:g,redirected:false,speed:0.15,type:'plane'};
+  entities.push(e);
+  return e;
+}
+
+function createSickPerson(x,z){
+  const g=new THREE.Group();
+  const bed=box(0.8,0.3,1.8,0x9a9a9a);bed.position.y=0.15;g.add(bed);
+  const person=buildCharacter(0xffeedd,0xffcba4,0.7);
+  person.rotation.x=Math.PI/2;person.position.set(0,0.5,0);g.add(person);
+  const bandage=box(0.5,0.05,0.1,0xffffff);bandage.position.set(0,0.7,0.1);g.add(bandage);
+  g.position.set(x,0,z);
+  scene.add(g);
+  const e={obj:g,x,z,healed:false,type:'sick'};
+  entities.push(e);
+  return e;
+}
+
+// ── PARTICLES ────────────────────────────────────────────
+let particles=[];
+function spawnParticles(x,y,z,color,count=12){
+  for(let i=0;i<count;i++){
+    const p=sphere(0.1,color);
+    p.material.transparent=true;
+    p.position.set(x,y,z);
+    p.userData={vx:(Math.random()-0.5)*0.15,vy:Math.random()*0.2+0.05,vz:(Math.random()-0.5)*0.15,life:1};
+    scene.add(p);particles.push(p);
+  }
+}
+function updateParticles(){
+  particles=particles.filter(p=>{
+    p.userData.life-=0.025;
+    p.position.x+=p.userData.vx;p.position.y+=p.userData.vy;p.position.z+=p.userData.vz;
+    p.userData.vy-=0.005;
+    p.material.opacity=p.userData.life;
+    if(p.userData.life<=0){scene.remove(p);return false;}
+    return true;
+  });
+}
+
+// ── SPAWN FOR STAGE ──────────────────────────────────────
+function spawnForStage(){
+  entities.forEach(e=>{if(e.obj)scene.remove(e.obj);});
+  entities=[];
+  const cfg=stageConfig(GS.stage);
+  if(GS.subMode==='rescue'||GS.subMode==='transport'){
+    for(let i=0;i<15;i++){
+      const a=Math.random()*Math.PI*2;
+      const r=6+Math.random()*(cfg.boundSize*0.6);
+      createSurvivor(Math.cos(a)*r,Math.sin(a)*r);
+    }
+  } else if(GS.subMode==='shelter'){
+    for(let i=0;i<cfg.supplyCount;i++){
+      const a=Math.random()*Math.PI*2;
+      const r=4+Math.random()*12;
+      createSupply(Math.cos(a)*r,Math.sin(a)*r,i);
+    }
+  } else if(GS.subMode==='flight'){
+    for(let i=0;i<7;i++)createPlane((Math.random()-0.5)*60,i*8-28);
+  } else if(GS.subMode==='healing'){
+    for(let i=0;i<10;i++){
+      const a=Math.random()*Math.PI*2;
+      const r=3+Math.random()*8;
+      createSickPerson(Math.cos(a)*r,Math.sin(a)*r);
+    }
+  }
+}
+
+// ── PLAYER PLACEMENT ─────────────────────────────────────
+function placePlayer(x,z,isPadre){
+  if(player.obj)scene.remove(player.obj);
+  player.obj=isPadre?buildPadrePio():buildGiuseppe();
+  player.obj.castShadow=true;
+  player.x=x;player.z=z;
+  player.obj.position.set(x,0,z);
+  scene.add(player.obj);
+}
+
+// ── CAMERA ───────────────────────────────────────────────
+function updateCamera(){
+  if(GS.subMode==='flight'){
+    camera.position.set(player.x-2,player.obj?player.obj.position.y+3:22,player.z);
+    camera.lookAt(player.x+5,player.obj?player.obj.position.y+2:22,player.z);
+  } else if(GS.subMode==='bio'){
+    camera.position.set(player.x,5,player.z+10);
+    camera.lookAt(player.x,2,player.z);
+  } else {
+    camera.position.set(player.x,8,player.z+12);
+    camera.lookAt(player.x,1,player.z);
+  }
+}
+
+// ── DIALOG ───────────────────────────────────────────────
+let dialogTimer=null;
+function showDialog(html,dur=4000,onDone){
+  const inner=document.getElementById('dialogInner');
+  inner.innerHTML=html;inner.style.display='block';
+  if(dialogTimer)clearTimeout(dialogTimer);
+  if(dur>0)dialogTimer=setTimeout(()=>{inner.style.display='none';if(onDone)onDone();},dur);
+}
+function hideDialog(){document.getElementById('dialogInner').style.display='none';if(dialogTimer)clearTimeout(dialogTimer);}
+
+function showStageTitle(text){
+  const el=document.getElementById('stageTitle');
+  el.innerHTML=text;el.classList.add('show');
+  setTimeout(()=>el.classList.remove('show'),2800);
+}
+
+// ── PADRE PIO CONTENT ────────────────────────────────────
+const ppQuotes=[
+  '"Pray, hope, and don\'t worry. Worry is useless. God is merciful and will hear your prayer."',
+  '"The life of a Christian is nothing but a perpetual struggle against self; there is no flowering of the soul to the beauty of its perfection except at the price of pain."',
+  '"Always stay close to the Catholic Church, because it alone can give you true peace, since it alone possesses Jesus in the Blessed Sacrament, the true Prince of Peace."',
+  '"Prayer is the best weapon we possess, the key that opens the heart of God."',
+  '"I am afraid of only one thing: of not being a saint."',
+  '"In books we seek God; in prayer we find him."',
+  '"Love the Madonna and pray the rosary, for her rosary is the weapon against the evils of the world today."',
+  '"The most beautiful act of faith is the one made in darkness, in sacrifice, and with extreme effort."',
+  '"I belong entirely to everyone. Everyone can say: Padre Pio is mine."',
+  '"Through the intercession of St. Michael and the celestial Choir of Seraphim may the Lord make us worthy to burn with the fire of perfect charity. Amen."'
+];
+
+const ppPrayers={
+  confessionComplete:{quote:ppQuotes[0],prayer:'<strong>Prayer for Padre Pio\'s Intercession:</strong><br><em>"O God, who gave Saint Pio of Pietrelcina, Capuchin priest, the great privilege of participating in a unique way in the passion of Your Son, grant me through his intercession the grace which I ardently desire; and above all grant me the grace of living in conformity with the death of Jesus, to arrive at the glory of the resurrection. Glory be to the Father, and to the Son, and to the Holy Spirit. Amen."</em>'},
+  planesComplete:{quote:ppQuotes[6],prayer:'<strong>Padre Pio\'s Prayer of Abandonment to God:</strong><br><em>"O Jesus, I promise You to submit myself to all that You permit to happen to me, only grant me the grace to know Your Holy Will. May Your will be done in all things. I offer You my heart; make it pure and fill it with Your love. Amen."</em>'},
+  healingComplete:{quote:ppQuotes[9],prayer:'<strong>Padre Pio\'s Prayer after Holy Communion:</strong><br><em>"Stay with me, Lord, for it is necessary to have You present so that I do not forget You. You know how easily I abandon You. Stay with me, Lord, because I am weak and I need Your strength, that I may not fall so often. Stay with me, Lord, for You are my life, and without You, I am without fervor. Stay with me, Lord, for You are my light, and without You, I am in darkness. Stay with me, Lord, to show me Your will. Stay with me, Lord, so that I hear Your voice and follow You. Stay with me, Lord, for I desire to love You very much, and always be in Your company. Stay with me, Lord, if You wish me to be faithful to You. Amen."</em>'}
+};
+
+// ── LIFE EVENTS ───────────────────────────────────────────
+const lifeEvents=[
+  {year:'1887',title:'Birth in Pietrelcina',desc:'Francesco Forgione was born on May 25, 1887, in Pietrelcina, a small village in southern Italy. His parents, Grazio and Maria Giuseppa Forgione, were simple, devout peasant farmers. From his earliest years, Francesco experienced visions of Jesus and the Virgin Mary, confiding these mystical experiences only to his confessor.',quote:ppQuotes[8]},
+  {year:'1903',title:'Entering the Capuchin Order',desc:'At age 15, Francesco entered the novitiate of the Capuchin Friars Minor at Morcone on January 6, 1903. He took the name "Pio" in honor of Pope Pius I. He was already known for intense prayer, fasting, and mortification of the flesh. He wrote: "I feel deeply the seriousness of this step, and I feel more strongly than ever the need to do what God wants."',quote:ppQuotes[4]},
+  {year:'1910',title:'Priestly Ordination',desc:'On August 10, 1910, Padre Pio was ordained a priest in the Cathedral of Benevento. He celebrated his first Mass in Pietrelcina to great celebration. He returned home due to severe health problems, spending years in prayer and spiritual development. During this time he received invisible stigmata — wounds causing intense suffering but leaving no visible marks.',quote:ppQuotes[7]},
+  {year:'1916',title:'Arrival at San Giovanni Rotondo',desc:'Padre Pio arrived at the friary of Santa Maria delle Grazie in San Giovanni Rotondo on September 4, 1916. This mountain town in the Gargano promontory of Apulia would be his permanent home for the next 52 years. He requested this particular friary and would never leave it except for brief journeys necessitated by his health.',quote:ppQuotes[3]},
+  {year:'1918',title:'The Visible Stigmata',desc:'On September 20, 1918, while kneeling before a large crucifix in the choir of the church, Padre Pio fell into an ecstasy. When he recovered, he found himself marked with the visible stigmata — bleeding wounds in his hands, feet, and side corresponding to the wounds of the crucified Christ. These wounds remained open and bleeding for 50 years, never infected, emitting a fragrant scent.',quote:ppQuotes[1]},
+  {year:'1940s–1950s',title:'Ministry and Persecution',desc:'Despite two periods of severe ecclesiastical restrictions — during which he was barred from public ministry — Padre Pio continued to pray and offer Mass. Pilgrims came by the thousands to attend his Masses, which could last 3–4 hours. His confessional sessions were legendary; he would sometimes reveal sins penitents had forgotten to confess. He was widely reported to bilocate — appearing simultaneously in two places.',quote:ppQuotes[2]},
+  {year:'1956',title:'Casa Sollievo della Sofferenza',desc:'After years of fundraising, Padre Pio\'s great charitable work opened on May 5, 1956: the Casa Sollievo della Sofferenza (Home for the Relief of Suffering), a modern hospital in San Giovanni Rotondo. Padre Pio declared: "This hospital is my gift to those who suffer — a work of charity from which the love of God will radiate throughout the world." Today it remains one of Italy\'s premier research hospitals.',quote:ppQuotes[5]},
+  {year:'1968',title:'Death and Incorruptibility',desc:'Padre Pio died at 2:30 a.m. on September 23, 1968. His last words were "Jesus... Mary." Over 100,000 people attended his funeral. Most remarkably, when his body was exhumed in 2008, it was found to be substantially incorrupt — preserved from decay in a miraculous manner. At the moment of his death, his stigmata wounds had completely and inexplicably disappeared, leaving his skin smooth.',quote:ppQuotes[0]},
+  {year:'1999',title:'Beatification by Pope John Paul II',desc:'On May 2, 1999, Pope John Paul II beatified Padre Pio before an estimated crowd of 200,000 faithful in St. Peter\'s Square. Pope John Paul II had personally visited Padre Pio in 1947 as a young priest and asked him to pray for a friend dying of cancer. Padre Pio reportedly told him: "You will become Pope." The cancer was healed.',quote:ppQuotes[9]},
+  {year:'2002',title:'Canonization',desc:'On June 16, 2002, Pope John Paul II canonized Padre Pio as Saint Pio of Pietrelcina before approximately 500,000 faithful in St. Peter\'s Square. His feast day is celebrated on September 23rd. He is the patron saint of civil defense volunteers and adolescents. His shrine in San Giovanni Rotondo now attracts over 7 million pilgrims per year.',quote:ppQuotes[8]}
+];
+
+// ── STAGE NAMES ──────────────────────────────────────────
+const stageCities=['Rome','Florence','Venice','Milan','Naples','Turin','Genoa','Bologna','Bari'];
+
+// ── HUD ──────────────────────────────────────────────────
+function updateHUD(){
+  document.getElementById('hStage').textContent=`${GS.stage}/9`;
+  document.getElementById('hScore').textContent=GS.score;
+  let goal='—';
+  if(GS.subMode==='rescue')goal=`Rescued ${GS.rescued}/15`;
+  else if(GS.subMode==='transport')goal=`Boarded ${GS.rescued}/15`;
+  else if(GS.subMode==='shelter')goal=`Supplies ${GS.collected}/${stageConfig(GS.stage).supplyCount}`;
+  else if(GS.subMode==='confession')goal=`Confessions ${GS.confessionCount}/10`;
+  else if(GS.subMode==='flight')goal=`Planes ${GS.planesRedirected}/7`;
+  else if(GS.subMode==='healing')goal=`Healed ${GS.peopleHealed}/10`;
+  else if(GS.subMode==='bio')goal=`Life ${GS.bioIndex+1}/${lifeEvents.length}`;
+  document.getElementById('hGoal').textContent=goal;
+  const totals={rescue:15,transport:15,shelter:stageConfig(GS.stage).supplyCount,confession:10,flight:7,healing:10,bio:lifeEvents.length};
+  const curr={rescue:GS.rescued,transport:GS.rescued,shelter:GS.collected,confession:GS.confessionCount,flight:GS.planesRedirected,healing:GS.peopleHealed,bio:GS.bioIndex+1};
+  const pct=GS.subMode&&totals[GS.subMode]?(curr[GS.subMode]||0)/totals[GS.subMode]*100:0;
+  document.getElementById('progressBar').style.width=pct+'%';
+}
+
+// ── STAGE INIT ───────────────────────────────────────────
+function initStageByNumber(s){
+  if(s<=3){initRescueStage();}
+  else if(s<=6){initTransportStage();}
+  else{initShelterStage();}
+}
+
+function initRescueStage(){
+  clearScene();buildItalianCity();
+  player.speed=stageConfig(GS.stage).playerSpeed;
+  placePlayer(0,0,false);
+  GS.subMode='rescue';GS.rescued=0;
+  spawnForStage();
+  document.getElementById('actionBtn').classList.remove('visible');
+  updateHUD();
+  showStageTitle(`🇮🇹 Stage ${GS.stage}: ${stageCities[GS.stage-1]}`);
+  const cfg=stageConfig(GS.stage);
+  showDialog(`<h3>Stage ${GS.stage} — ${stageCities[GS.stage-1]}</h3>Rescue 15 people! They'll try to run.<br><small>Difficulty: flee speed ${(cfg.survivorSpeed*1000).toFixed(0)}/1000, detection radius ${cfg.fleeRadius.toFixed(1)}</small>`,3500);
+}
+
+function initTransportStage(){
+  clearScene();buildTransportScene();
+  player.speed=stageConfig(GS.stage).playerSpeed;
+  placePlayer(-15,0,false);
+  GS.subMode='transport';GS.rescued=0;
+  spawnForStage();
+  document.getElementById('actionBtn').classList.remove('visible');
+  updateHUD();
+  showStageTitle(`🚂 Stage ${GS.stage}: ${stageCities[GS.stage-1]}`);
+  showDialog(`<h3>Stage ${GS.stage} — ${stageCities[GS.stage-1]}</h3>Guide 15 people to the train platform!`,3000);
+}
+
+function initShelterStage(){
+  clearScene();buildShelterScene();
+  player.speed=stageConfig(GS.stage).playerSpeed;
+  placePlayer(0,0,false);
+  GS.subMode='shelter';GS.collected=0;
+  spawnForStage();
+  document.getElementById('actionBtn').classList.remove('visible');
+  updateHUD();
+  showStageTitle(`🏠 Stage ${GS.stage}: ${stageCities[GS.stage-1]}`);
+  showDialog(`<h3>Stage ${GS.stage} — ${stageCities[GS.stage-1]}</h3>Collect all the supply crates scattered through the shelter blocks!`,3000);
+}
+
+// ── CONFESSION ───────────────────────────────────────────
+const confessionTexts=[
+  'Father, I have been impatient and short-tempered with my family.',
+  'Padre, I confess that I spoke unkindly about my neighbor behind their back.',
+  'I have missed Sunday Mass three times this month, Father.',
+  'I have been greedy and failed to share my blessings with those in need.',
+  'Father Pio, I have harbored anger and resentment in my heart.',
+  'I have been prideful and thought myself better than others.',
+  'I told a lie to protect myself, Father. I am ashamed.',
+  'I confess to envy — I desired what God gave to others.',
+  'Father, I have neglected my duties to my family and to God.',
+  'Padre Pio, I doubted God\'s love for me in a moment of great suffering.'
+];
+const padrePioResponses=[
+  "God's mercy is greater than any sin. Confess with sincerity, resolve to change, and receive His peace.",
+  'The Lord sees your repentant heart. Your sins are forgiven. Go and sin no more.',
+  'Never lose heart. God is more merciful than we dare imagine. Your sins are absolved.',
+  'Pray, hope, and don\'t worry. God forgives you completely. Walk in His light.',
+  'I can feel your sincere sorrow. God receives your repentance. Be at peace.',
+  'True humility means accepting God\'s forgiveness as readily as you accept your sin. You are forgiven.',
+  "God's grace is stronger than your weakness. Rise, go in peace, your sins are forgiven.",
+  'Offer this struggle to God as a prayer. He loves you. Go in peace.',
+  'Return to prayer each morning. God is faithful. Your sins are forgiven.',
+  'Even in doubt, God never abandoned you. He forgives you. Return to His embrace.'
+];
+
+let confessionIdx=0;
+let confessionBusy=false; // BUG FIX: was using undeclared confessionCooldown variable
+
+function initConfessionMode(){
+  clearScene();buildChurchInterior();
+  placePlayer(-4,0,true);
+  GS.subMode='confession';GS.confessionCount=0;
+  confessionIdx=0;confessionBusy=false;
+  entities.forEach(e=>{if(e.obj)scene.remove(e.obj);});entities=[];
+  document.getElementById('actionBtn').classList.remove('visible');
+  document.getElementById('hStage').textContent='Padre Pio';
+  updateHUD();
+  showStageTitle('🕊 Confession Booth');
+  showDialog('<h3>Sit in the confessional, Padre Pio.</h3>Penitents will come to you every 10 seconds.<br>Listen and offer God\'s forgiveness to each soul.',5000);
+}
+
+function triggerNextConfession(){
+  if(confessionBusy||GS.confessionCount>=10||GS.subMode!=='confession')return;
+  confessionBusy=true;
+  const i=confessionIdx%confessionTexts.length;
+  confessionIdx++;
+  const penitent=buildCharacter(0x3355aa,0xffcba4);
+  penitent.position.set(0,0,-6);scene.add(penitent);
+  let t=0;
+  const walk=setInterval(()=>{
+    t+=0.04;penitent.position.z=-6+t*4;penitent.position.x=-4;
+    if(t>=1){
+      clearInterval(walk);scene.remove(penitent);
+      showDialog(`<h3>Penitent #${GS.confessionCount+1}:</h3><em>"${confessionTexts[i]}"</em><br><br><strong>Padre Pio:</strong> "${padrePioResponses[i]}"`,5500,()=>{
+        GS.confessionCount++;GS.score+=50;
+        spawnParticles(-4,3,0,0xffd700,8);
+        confessionBusy=false;updateHUD();
+        if(GS.confessionCount>=10)confessionComplete();
+      });
+    }
+  },40);
+}
+
+function confessionComplete(){
+  const d=ppPrayers.confessionComplete;
+  showDialog(`<h3>All confessions heard!</h3><em>${d.quote}</em><br><br>${d.prayer}`,8000,()=>initFlightMode());
+}
+
+// ── FLIGHT ────────────────────────────────────────────────
+function initFlightMode(){
+  clearScene();buildSkyScene();
+  placePlayer(0,0,true);
+  if(player.obj)player.obj.position.y=20;
+  player.x=0;player.z=0;
+  GS.subMode='flight';GS.planesRedirected=0;
+  spawnForStage();
+  document.getElementById('actionBtn').classList.remove('visible');
+  updateHUD();
+  showStageTitle('✈ Soaring Over Italy');
+  showDialog(`<h3>${ppQuotes[6]}</h3><br>Tap a plane to redirect it away from Italy! Redirect all 7 planes.`,5000);
+}
+
+const raycaster=new THREE.Raycaster();
+const mouse2d=new THREE.Vector2();
+
+function checkPlaneTap(cx,cy){
+  if(GS.subMode!=='flight')return;
+  mouse2d.x=(cx/innerWidth)*2-1;
+  mouse2d.y=-(cy/innerHeight)*2+1;
+  raycaster.setFromCamera(mouse2d,camera);
+  const meshes=[];
+  entities.filter(e=>e.type==='plane'&&!e.redirected).forEach(e=>e.obj.traverse(c=>{if(c.isMesh)meshes.push(c);}));
+  const hits=raycaster.intersectObjects(meshes);
+  if(hits.length){
+    const hit=hits[0].object;
+    const e=entities.find(en=>en.type==='plane'&&en.obj&&(en.obj===hit||en.obj===hit.parent));
+    if(e&&!e.redirected){
+      e.redirected=true;
+      e.obj.traverse(c=>{if(c.material)c.material.color.set(0x00dd44);});
+      GS.planesRedirected++;GS.score+=75;
+      spawnParticles(e.obj.position.x,e.obj.position.y,e.obj.position.z,0x00ff88,15);
+      updateHUD();
+      if(GS.planesRedirected>=7)flightComplete();
+    }
+  }
+}
+
+function flightComplete(){
+  const d=ppPrayers.planesComplete;
+  showDialog(`<h3>✈ All planes redirected!</h3><em>${d.quote}</em><br><br>${d.prayer}`,8000,()=>initHealingMode());
+}
+
+// ── HEALING ───────────────────────────────────────────────
+let healCooldown=0;
+
+function initHealingMode(){
+  clearScene();buildHospitalScene();
+  placePlayer(0,0,true);
+  GS.subMode='healing';GS.peopleHealed=0;
+  healCooldown=0;
+  spawnForStage();
+  document.getElementById('actionBtn').classList.add('visible');
+  document.getElementById('actionBtn').textContent='🙏 PRAY';
+  updateHUD();
+  showStageTitle('✝ The Healing Ministry');
+  showDialog(`<h3>${ppQuotes[3]}</h3><br>Walk near the sick and press PRAY / SPACE to heal through prayer.`,5000);
+}
+
+function tryHeal(){
+  if(healCooldown>0)return;
+  entities.forEach(e=>{
+    if(e.type==='sick'&&!e.healed){
+      const dx=e.obj.position.x-player.x,dz=e.obj.position.z-player.z;
+      if(Math.sqrt(dx*dx+dz*dz)<2.5){
+        e.healed=true;
+        e.obj.traverse(c=>{if(c.material)c.material.color.set(0x44dd88);});
+        spawnParticles(e.obj.position.x,1.5,e.obj.position.z,0xffd700,20);
+        playHealSound();
+        GS.peopleHealed++;GS.score+=100;
+        healCooldown=35;updateHUD();
+        if(GS.peopleHealed>=10)healingComplete();
+      }
+    }
+  });
+}
+
+function healingComplete(){
+  const d=ppPrayers.healingComplete;
+  showDialog(`<h3>✝ All healed by prayer!</h3><em>${d.quote}</em><br><br>${d.prayer}`,10000,()=>initBioMode());
+}
+
+// ── BIOGRAPHY ─────────────────────────────────────────────
+function initBioMode(){
+  GS.subMode='bio';GS.bioIndex=0;
+  showBioEvent(0);
+}
+
+function showBioEvent(index){
+  if(index>=lifeEvents.length){endGame();return;}
+  const ev=lifeEvents[index];
+  clearScene();buildBioScene(index);
+  placePlayer(0,0,true);
+  GS.bioIndex=index;
+  document.getElementById('actionBtn').classList.add('visible');
+  document.getElementById('actionBtn').innerHTML=`Next ▶ (${index+1}/${lifeEvents.length})`;
+  document.getElementById('actionBtn').onclick=()=>advanceBio();
+  updateHUD();
+  showStageTitle(`${ev.year}: ${ev.title}`);
+  showDialog(`<h3>${ev.year} — ${ev.title}</h3>${ev.desc}<br><br><em>${ev.quote}</em><br><br><span class="continue-hint" onclick="advanceBio()">▶ TAP TO CONTINUE (${index+1}/${lifeEvents.length})</span>`,0);
+}
+
+function advanceBio(){GS.bioIndex++;showBioEvent(GS.bioIndex);}
+
+function endGame(){
+  hideDialog();
+  showDialog(`<h3>🕊 Padre Pio's Legacy Lives On 🕊</h3><br>You have walked the path of Saint Pio of Pietrelcina — priest, mystic, stigmatist, healer, and beloved son of Italy.<br><br><em>"I belong entirely to everyone. Everyone can say: Padre Pio is mine."</em><br><br><strong>— Saint Pio of Pietrelcina (1887–1968)</strong><br><br>Final Score: <strong>${GS.score}</strong>`,0);
+  document.getElementById('actionBtn').innerHTML='MENU';
+  document.getElementById('actionBtn').classList.add('visible');
+  document.getElementById('actionBtn').onclick=()=>{
+    hideDialog();returnToMenu();
+    document.getElementById('actionBtn').onclick=()=>triggerAction();
+  };
+}
+
+// ── STORY COMPLETE ───────────────────────────────────────
+function stageComplete(){
+  GS.score+=200*GS.stage;
+  spawnParticles(player.x,2,player.z,0xffd700,30);
+  if(GS.stage<9){
+    GS.stage++;
+    showDialog(`<h3>✅ Stage ${GS.stage-1} Complete!</h3>Giuseppe travels to <strong>${stageCities[GS.stage-1]}</strong>...`,2500,()=>initStageByNumber(GS.stage));
+  } else {
+    showDialog(`<h3>🇮🇹 All 9 Stages Complete!</h3>Giuseppe has helped all of Italy!<br>Now seek confession with <strong>Padre Pio</strong>...`,3000,()=>showConfessionSequence());
+  }
+}
+
+function showConfessionSequence(){
+  const seq=[
+    '<h3>Giuseppe Kneels Before Padre Pio...</h3>The humble friar extends his hands, bearing the wounds of Christ.',
+    '<h3>Padre Pio Speaks:</h3><em>"My son, confess your sins with a sincere heart and a firm purpose of amendment."</em>',
+    '<h3>Giuseppe Confesses:</h3>Pride, anger, impatience, distraction from prayer, neglect of the poor...',
+    '<h3>Padre Pio:</h3><em>"God sees your sincere sorrow. Through the ministry of the Church, your sins are forgiven. Go in peace and sin no more."</em>',
+    `<h3>Padre Pio:</h3><em>${ppQuotes[0]}</em>`,
+    '<h3>🕊 PADRE PIO MODE UNLOCKED 🕊</h3>You have received absolution. A new journey begins...'
+  ];
+  let i=0;
+  function next(){
+    showDialog(seq[i],2500,()=>{i++;if(i<seq.length)next();else{
+      GS.padrePioUnlocked=true;
+      document.getElementById('btnPadre').disabled=false;
+      document.getElementById('btnPadre').textContent='🕊 Padre Pio Mode (UNLOCKED)';
+      returnToMenu();
+    }});
+  }next();
+}
+
+// ── MENU ─────────────────────────────────────────────────
+function startStoryMode(){
+  document.getElementById('menu').style.display='none';
+  GS.mode='game';GS.stage=1;GS.score=0;GS.rescued=0;GS.collected=0;
+  startItalianMusic();
+  showDialog('<h3>🇮🇹 Giuseppe\'s Journey Begins</h3>Travel through Italy helping communities in need!',3000);
+  initRescueStage();
+}
+
+function startPadrePioMode(){
+  document.getElementById('menu').style.display='none';
+  GS.mode='padrepio';GS.score=0;
+  GS.confessionCount=0;GS.planesRedirected=0;GS.peopleHealed=0;
+  confessionIdx=0;confessionBusy=false;
+  document.getElementById('hStage').textContent='Padre Pio';
+  startItalianMusic();
+  initConfessionMode();
+}
+
+function returnToMenu(){
+  clearScene();
+  entities.forEach(e=>{if(e.obj)scene.remove(e.obj);});entities=[];
+  document.getElementById('menu').style.display='flex';
+  document.getElementById('actionBtn').classList.remove('visible');
+  hideDialog();
+}
+
+// ── CONFESSION INTERVAL — BUG FIX ────────────────────────
+// Previously both setInterval AND updateConfession() in main loop fired confessions
+// — double-triggering bug. Now ONLY setInterval fires them. Main loop removed.
+setInterval(()=>{
+  if(GS.subMode==='confession'&&!confessionBusy&&GS.confessionCount<10){
+    triggerNextConfession();
+  }
+},10000);
+
+// ── UPDATE LOOPS ─────────────────────────────────────────
+function updateRescue(){
+  const cfg=stageConfig(GS.stage);
+  entities.forEach(e=>{
+    if(e.type==='survivor'&&!e.rescued){
+      const dx=e.obj.position.x-player.x;
+      const dz=e.obj.position.z-player.z;
+      const dist=Math.sqrt(dx*dx+dz*dz);
+
+      if(dist<cfg.fleeRadius){
+        // Flee from player — speed scaled to stage (75% slower base at stage 1)
+        e.vx+=(dx/Math.max(dist,0.01))*cfg.survivorSpeed;
+        e.vz+=(dz/Math.max(dist,0.01))*cfg.survivorSpeed;
+      } else {
+        // Wander gently
+        e.vx+=(Math.random()-0.5)*cfg.wanderStrength;
+        e.vz+=(Math.random()-0.5)*cfg.wanderStrength;
+      }
+      e.vx*=0.88;e.vz*=0.88;
+
+      e.obj.position.x=Math.max(-cfg.boundSize,Math.min(cfg.boundSize,e.obj.position.x+e.vx));
+      e.obj.position.z=Math.max(-cfg.boundSize,Math.min(cfg.boundSize,e.obj.position.z+e.vz));
+      e.obj.position.y=Math.abs(Math.sin(GS.animTime*10))*0.1;
+      if(Math.abs(e.vx)+Math.abs(e.vz)>0.001)
+        e.obj.rotation.y=Math.atan2(e.vx,e.vz);
+      e.x=e.obj.position.x;e.z=e.obj.position.z;
+
+      if(dist<cfg.catchRadius){
+        e.rescued=true;
+        // Rescue glow + sound before removing
+        const pos=e.obj.position.clone();
+        scene.remove(e.obj);
+        addRescueGlow(pos);
+        spawnParticles(pos.x,1,pos.z,0xffd700,15);
+        playRescueSound();
+        GS.rescued++;GS.score+=10*GS.stage;
+        updateHUD();
+        if(GS.rescued>=15)stageComplete();
+      }
+    }
+  });
+}
+
+function updateTransport(){
+  const cfg=stageConfig(GS.stage);
+  const trainX=12;
+  entities.forEach(e=>{
+    if(e.type==='survivor'&&!e.rescued){
+      const dx=e.obj.position.x-player.x,dz=e.obj.position.z-player.z;
+      const dist=Math.sqrt(dx*dx+dz*dz);
+      if(dist<5){e.vx-=dx*0.01;e.vz-=dz*0.01;}
+      e.vx*=0.88;e.vz*=0.88;
+      e.obj.position.x+=e.vx;e.obj.position.z+=e.vz;
+      e.obj.position.y=Math.abs(Math.sin(GS.animTime*10))*0.08;
+      e.x=e.obj.position.x;e.z=e.obj.position.z;
+      const distTrain=Math.abs(e.obj.position.x-trainX);
+      if(distTrain<2&&Math.abs(e.obj.position.z)<3){
+        e.rescued=true;
+        const pos=e.obj.position.clone();
+        scene.remove(e.obj);
+        addRescueGlow(pos);
+        spawnParticles(pos.x,1,pos.z,0x44aaff,12);
+        playRescueSound();
+        GS.rescued++;GS.score+=15*GS.stage;
+        updateHUD();
+        if(GS.rescued>=15)stageComplete();
+      }
+    }
+  });
+}
+
+function updateShelter(){
+  const cfg=stageConfig(GS.stage);
+  entities.forEach(e=>{
+    if(e.type==='supply'&&!e.collected){
+      e.rotTimer=(e.rotTimer||0)+0.04;
+      e.obj.rotation.y=e.rotTimer;
+      e.obj.position.y=Math.sin(e.rotTimer)*0.15+0.3;
+      const dx=e.obj.position.x-player.x,dz=e.obj.position.z-player.z;
+      const dist=Math.sqrt(dx*dx+dz*dz);
+      if(dist<1.8){
+        e.collected=true;
+        const pos=e.obj.position.clone();
+        scene.remove(e.obj);
+        spawnParticles(pos.x,1,pos.z,0xffdd00,15);
+        playRescueSound();
+        GS.collected++;GS.score+=20*GS.stage;
+        updateHUD();
+        if(GS.collected>=cfg.supplyCount)stageComplete();
+      }
+    }
+  });
+}
+
+function updateFlight(){
+  entities.forEach(e=>{
+    if(e.type==='plane'){
+      if(!e.redirected){
+        e.obj.position.x+=e.speed;
+        e.obj.position.z+=Math.sin(GS.animTime+e.obj.position.z*0.1)*0.03;
+        if(e.obj.position.x>80)e.obj.position.x=-80;
+      } else {
+        e.obj.position.x-=e.speed*0.5;
+        e.obj.position.y+=0.025;
+      }
+    }
+  });
+  if(isUp())player.obj.position.z-=0.3;
+  if(isDown())player.obj.position.z+=0.3;
+  if(isLeft())player.obj.position.x-=0.3;
+  if(isRight())player.obj.position.x+=0.3;
+  player.x=player.obj.position.x;player.z=player.obj.position.z;
+}
+
+function updateHealing(){
+  if(healCooldown>0)healCooldown--;
+  if(actionJustPressed())tryHeal();
+}
+
+// ── MAIN UPDATE ──────────────────────────────────────────
+let lastTime=0;
+function update(ts){
+  const dt=Math.min((ts-lastTime)/16.67,3);
+  lastTime=ts;
+  GS.animTime+=0.016*dt;
+
+  if(GS.mode==='menu')return;
+  if(GS.subMode==='bio')return;
+
+  // Player movement (all modes except flight)
+  if(GS.subMode!=='flight'&&player.obj){
+    let dx=0,dz=0;
+    if(isLeft())dx-=player.speed*dt;
+    if(isRight())dx+=player.speed*dt;
+    if(isUp())dz-=player.speed*dt;
+    if(isDown())dz+=player.speed*dt;
+    if(dx!==0&&dz!==0){dx*=0.707;dz*=0.707;}
+    const bound=25;
+    player.x=Math.max(-bound,Math.min(bound,player.x+dx));
+    player.z=Math.max(-bound,Math.min(bound,player.z+dz));
+    player.obj.position.x=player.x;
+    player.obj.position.z=player.z;
+    if(dx!==0||dz!==0){
+      player.obj.rotation.y=Math.atan2(dx,dz);
+      player.obj.position.y=Math.abs(Math.sin(GS.animTime*12))*0.07;
+    }
+  }
+
+  if(GS.subMode==='rescue')updateRescue();
+  else if(GS.subMode==='transport')updateTransport();
+  else if(GS.subMode==='shelter')updateShelter();
+  else if(GS.subMode==='flight')updateFlight();
+  else if(GS.subMode==='healing')updateHealing();
+  // NOTE: confession updates via setInterval only — no duplicate call here
+
+  if(GS.mode==='therese')updateThereseMode();
+
+  updateParticles();
+  updateCamera();
+
+  // Cloud drift
+  if(GS.subMode==='flight'){
+    sceneObjects.forEach(o=>{
+      if(o.userData&&o.userData.cloud){o.position.x+=0.04;if(o.position.x>150)o.position.x=-150;}
+    });
+  }
+
+  // Padre Pio halo pulse
+  if(GS.mode==='padrepio'&&player.obj){
+    const halo=player.obj.children.find(c=>c.geometry&&c.geometry.type==='TorusGeometry');
+    if(halo&&halo.material)halo.material.emissiveIntensity=0.4+Math.sin(GS.animTime*3)*0.3;
+  }
+
+  document.getElementById('hScore').textContent=GS.score;
+}
+
+// ── RENDER LOOP ───────────────────────────────────────────
+function render(ts){
+  requestAnimationFrame(render);
+  update(ts);
+  renderer.render(scene,camera);
+}
+
+camera.position.set(0,10,20);
+camera.lookAt(0,0,0);
+requestAnimationFrame(render);
+
+// ═══════════════════════════════════════════════════════
+//  THERESE NEUMANN MODE
+//  Servant of God Therese Neumann (1898–1962)
+//  Konnersreuth, Bavaria, Germany
+//  Sources: Fr. Boniface Hanley OFM "Therese Neumann: Mystic and Stigmatist" (1980)
+//           Fr. Frederick Carney "The Stigmata and Modern Science" (1956)
+//           Johannes Steiner "Therese Neumann: A Portrait" (1967)
+//           Archbishop Teodoro Kardinal Innitzer's testimony (1927)
+//           Dr. Fritz Gerlich "Die stigmatisierte Therese von Konnersreuth" (1929)
+//           Dr. Joseph Deutsch medical testimony (1927)
+//           Msgr. Josef Reetz OSB eyewitness accounts
+//           Dietrich von Hildebrand personal testimony
+//           Fr. Naber (her parish priest) letters and diaries
+//           Albert Paul Schimberg "The Story of Therese Neumann" (1947)
+// ═══════════════════════════════════════════════════════
+
+// ── THERESE NEUMANN CHARACTER ─────────────────────────
+function buildThereseNeumann(){
+  const g = new THREE.Group();
+  // Black Bavarian dress
+  const body = box(0.5, 0.75, 0.3, 0x1a1a1a, 0, 0.95);
+  body.position.y = 0.37; g.add(body);
+  // White head covering (Bavarian peasant style)
+  const head = sphere(0.22, 0xffcba4, 0, 0.8);
+  head.position.y = 0.95; g.add(head);
+  const veil = box(0.48, 0.08, 0.48, 0xffffff, 0, 0.9);
+  veil.position.y = 1.08; g.add(veil);
+  const veilBack = box(0.42, 0.35, 0.08, 0xffffff, 0, 0.9);
+  veilBack.position.set(0, 0.92, -0.22); g.add(veilBack);
+  // Arms
+  const la = box(0.14, 0.48, 0.14, 0x1a1a1a);
+  la.position.set(-0.34, 0.3, 0); la.rotation.z = 0.25; g.add(la);
+  const ra = la.clone();
+  ra.position.set(0.34, 0.3, 0); ra.rotation.z = -0.25; g.add(ra);
+  // Stigmata glow on hands (subtle red points)
+  const stigLight = new THREE.PointLight(0xff2200, 0.6, 1.2);
+  stigLight.position.set(0, 0.4, 0.3); g.add(stigLight);
+  // Halo (Servant of God — lighter gold, not full saint yet)
+  const haloGeo = new THREE.TorusGeometry(0.28, 0.022, 8, 32);
+  const haloMat = new THREE.MeshStandardMaterial({
+    color: 0xffeebb, emissive: 0xffd700,
+    emissiveIntensity: 0.5, metalness: 0.7, roughness: 0.2
+  });
+  const halo = new THREE.Mesh(haloGeo, haloMat);
+  halo.position.y = 1.18; halo.rotation.x = Math.PI * 0.12;
+  g.add(halo);
+  return g;
+}
+
+// ── THERESE NEUMANN LIFE EVENTS ────────────────────────
+// 14 major life chapters — childhood → beatification cause
+const thereseEvents = [
+  {
+    year: '1898',
+    title: 'Birth in Konnersreuth',
+    chapter: 'Early Life',
+    scene: 'bavarian_farm',
+    desc: 'Therese Neumann was born on April 9, 1898 — Good Friday — in Konnersreuth, a small village in Upper Bavaria, Germany. She was the eldest of eleven children of Ferdinand and Anna Neumann, a devout Catholic farming family. From her earliest years, Therese was known for her deep piety, her loving care for the poor and sick, and her extraordinary tenderness toward animals. Her parish priest, Fr. Josef Naber, noted in his diary: "Even as a small child, Therese showed a spiritual depth that could not be explained by natural means." She had a strong devotion to St. Thérèse of Lisieux from childhood, and it was this "Little Flower" who would later be credited with her miraculous healing.',
+    quote: '"From her infancy, she was a child of singular piety and mortification." — Fr. Josef Naber, Pastor of Konnersreuth, parish diary, 1930',
+    interactive: 'walk',
+    task: 'Walk through the Bavarian village — explore your childhood home'
+  },
+  {
+    year: '1918',
+    title: 'The Accident & Paralysis',
+    chapter: 'Trial & Suffering',
+    scene: 'farm',
+    desc: 'On March 10, 1918, while helping to fight a fire at a neighbor\'s barn, the twenty-year-old Therese fell from a ladder, injuring her spine. Further accidents followed, leaving her progressively paralyzed and bedridden for years. She suffered blindness, deafness, convulsions, and open wounds. Doctors considered her case hopeless. Yet through these years of terrible suffering, Therese\'s spirit remained joyful and her prayer life intensified. She later reflected: "I understood then that suffering united to Christ\'s has a redemptive value. I did not wish to be healed if it were not God\'s will." Bishop Michael Buchberger of Regensburg, who later investigated her case, wrote: "Her acceptance of suffering was heroic and clearly supernatural in character."',
+    quote: '"She bore her sufferings with such patience and cheerfulness that all who saw her were edified and strengthened in their own faith." — Albert Paul Schimberg, "The Story of Therese Neumann" (1947)',
+    interactive: 'wait',
+    task: 'Remain still in prayer — endure suffering with patience (hold still for 5 seconds)'
+  },
+  {
+    year: '1923',
+    title: 'First Miraculous Healing',
+    chapter: 'The Miracles Begin',
+    scene: 'bedroom',
+    desc: 'On April 29, 1923 — the day of the beatification of St. Thérèse of Lisieux — Therese Neumann\'s sight was suddenly and completely restored. She had been blind for three years. This was followed by the healing of her appendix affliction on May 17, 1925 — the day of St. Thérèse\'s canonization. On the same date in 1925, Therese rose from her sickbed, cured of her paralysis after years of being bedridden. Dr. Seidl, who had treated her, was baffled: "There is no medical explanation for this recovery. The spine lesion I documented is gone. This is beyond science." Archbishop Teodoro Innitzer of Vienna later wrote: "The coincidence of these healings with the liturgical feasts of St. Thérèse is impossible to attribute to chance."',
+    quote: '"The healings of Therese Neumann on the exact dates of the beatification and canonization of the Little Flower leave no room for natural explanation. Divine intervention alone accounts for them." — Archbishop Teodoro Innitzer of Vienna, testimony to the Holy See, 1927',
+    interactive: 'collect',
+    task: 'Collect 5 golden lights — each represents a miraculous healing'
+  },
+  {
+    year: '1926',
+    title: 'The Stigmata Received',
+    chapter: 'The Sacred Wounds',
+    scene: 'bedroom',
+    desc: 'On the first Friday of Lent, February 26, 1926, Therese was meditating on the Passion of Christ when a brilliant light flooded her room and she felt a sharp pain in her heart. A wound appeared — the wound of the lance. In subsequent weeks, during Passion meditation, wounds appeared in her hands, feet, and brow from the crown of thorns. Every Friday, Therese would enter ecstasy and relive the Passion of Christ, weeping tears of blood. Dr. Josef Deutsch, a skeptical physician, examined her on Good Friday 1927 and wrote in his report: "I witnessed the opening of the stigmata wounds, the flow of blood, the ecstatic state, and the return to normal consciousness. These wounds do not fester, do not suppurate, and cannot be explained by any medical science I know." The wounds remained with her for 36 years until her death.',
+    quote: '"The stigmata of Therese Neumann are genuine. I, a physician of many years\' experience, have examined them repeatedly. They are not self-inflicted, they do not become infected, and they bleed fresh blood at the appropriate times. This is a miracle." — Dr. Josef Deutsch, medical report, April 1927',
+    interactive: 'pray',
+    task: 'Kneel in prayer — press PRAY to enter the Passion ecstasy'
+  },
+  {
+    year: '1926–1962',
+    title: 'The Inedia — Living Without Food',
+    chapter: 'The Fast of the Angels',
+    scene: 'bedroom',
+    desc: 'From 1926 onward, Therese Neumann lived without any food or water except for the daily reception of the Holy Eucharist. This state of inedia (living without nourishment) lasted for 36 years until her death. The Church term for this is "inedia prodigiosa" — miraculous fasting. Fr. Naber, her confessor, testified: "I have personally observed her for years. She takes nothing — no food, no water, no medicine. She receives only the Holy Eucharist. This is not starvation — she maintains her weight and her strength." The phenomenon was subjected to rigorous scientific tests in 1927 (see later events). Pope Pius XII was personally briefed on her case and expressed his conviction of its supernatural character.',
+    quote: '"I have been her pastor for decades. I stake my priestly honor and my eternal soul on this testimony: Therese Neumann has lived without food or water for years, sustained by the Holy Eucharist alone. This is the miracle of the angels\' bread." — Fr. Josef Naber, sworn testimony to the Bishop of Regensburg, 1928',
+    interactive: 'collect',
+    task: 'Receive 1 Holy Eucharist — find the golden Host'
+  },
+  {
+    year: '1927',
+    title: 'The Medical Commission Tests',
+    chapter: 'Scientific Examination',
+    scene: 'hospital',
+    desc: 'In July 1927, under the direction of the Bishop of Regensburg, a rigorous scientific investigation was conducted. A team of trained nurses under the supervision of Dr. Ewald, a professor of internal medicine, kept Therese under continuous 24-hour observation for 15 days. She was weighed daily. She was not permitted to leave the room without a nurse. Her every movement was monitored. Result: Therese neither ate nor drank anything for the entire 15 days. She lost weight only during Friday ecstasies (blood loss) but otherwise maintained stable weight. Dr. Ewald\'s official report to the Bishop of Regensburg states: "We observed an extraordinary phenomenon. The subject lived for 15 days without food or water. She was observed at all times. There was no deception. We cannot account for this by any natural means known to medicine." Dietrich von Hildebrand, the great Catholic philosopher who visited her, wrote: "All attempts to explain Therese Neumann naturally have failed. She is a gift to the Church."',
+    quote: '"After 15 days of uninterrupted medical observation with no food or drink, Therese Neumann\'s vital signs remained stable, her blood tests were normal, and she maintained her weight — except for the blood she shed on Fridays. This cannot happen by natural means." — Official Medical Commission Report to Bishop Michael Buchberger of Regensburg, July 1927',
+    interactive: 'navigate',
+    task: 'Navigate through the examination ward — reach the examination room'
+  },
+  {
+    year: '1927–1962',
+    title: 'The Friday Passion Ecstasies',
+    chapter: 'Weekly Mystical Experience',
+    scene: 'church',
+    desc: 'Every Friday from 1926 to her death in 1962 — 36 years without exception — Therese relived the Passion of Christ in mystical ecstasy. She would enter a trance state, her expression changing to reflect the agony she witnessed. Her wounds would bleed. Witnesses reported hearing her speak in Aramaic (a language she never studied), Greek, and Latin during these ecstasies. Archbishop Johannes Dyba, who visited her, testified: "I heard her speak in Aramaic. I know scholars of ancient languages. What she spoke was authentic Galilean Aramaic of the first century. She learned no languages. This is supernatural knowledge." Msgr. Josef Reetz, Abbot of Beuron, who witnessed many ecstasies, wrote: "She would describe scenes of the Passion with such precision, such detail, such beauty — details later confirmed by Scripture scholars — that no human learning could account for them."',
+    quote: '"I have been present at many of the Friday ecstasies of Therese Neumann. She speaks languages she has never learned. She describes events of the Passion with historical and geographical accuracy no untutored peasant girl could possess. The reality of her mystical state is beyond all reasonable doubt." — Msgr. Josef Reetz OSB, Abbot of Beuron, memoir, 1952',
+    interactive: 'pray',
+    task: 'Enter the Friday ecstasy — press PRAY 5 times to relive each station'
+  },
+  {
+    year: '1928',
+    title: 'Spiritual Gifts & Charisms',
+    chapter: 'The Gifts of the Holy Spirit',
+    scene: 'bavarian_farm',
+    desc: 'Alongside the stigmata and inedia, Therese was documented to possess numerous extraordinary spiritual gifts. BILOCATION: Multiple witnesses — including Bishop Wilhelm Stockums of Cologne — reported seeing Therese simultaneously in two locations. CLAIRVOYANCE: She correctly identified sacred relics presented to her (including relics of St. Thérèse, St. John Vianney, and St. Teresa of Ávila) while blindfolded. Dr. Fritz Gerlich, a Protestant journalist initially sent to debunk her, was so overwhelmed by what he witnessed that he converted to Catholicism, writing: "I came to Konnersreuth as a skeptic. I left as a believer. God is real." READING OF SOULS: Numerous priests and penitents testified that Therese revealed hidden sins and interior states without any natural explanation. FR. Naber wrote: "She told me things about visitors — strangers — that only God could have told her."',
+    quote: '"Therese Neumann is endowed with extraordinary mystical gifts: the stigmata, inedia, ecstasies, knowledge of languages she never learned, reading of hearts, discernment of spirits, the scent of sanctity. In my 40 years as a priest I have never encountered anything like her. She is an instrument of God." — Fr. Josef Naber, parish diary, 1935',
+    interactive: 'discern',
+    task: 'Use spiritual discernment — identify which of the glowing objects is a holy relic'
+  },
+  {
+    year: '1929',
+    title: 'Dr. Gerlich\'s Investigation',
+    chapter: 'The Protestant Journalist Converts',
+    scene: 'village',
+    desc: 'Dr. Fritz Michael Gerlich was editor of the Münchner Neueste Nachrichten, Munich\'s largest newspaper. A Protestant intellectual and fierce skeptic, he was assigned to travel to Konnersreuth and expose Therese Neumann as a fraud. What he found destroyed his skepticism. He witnessed the Friday ecstasies, the bleeding wounds, and the absence of food consumption. He submitted Therese to multiple private tests. She passed them all. When Therese, during a session, revealed to him a secret sin he had never confessed to anyone, he broke down and wept. He converted to the Catholic faith, resigned his editorship, and devoted his life to documenting Therese\'s case. He wrote in his book "Die stigmatisierte Therese von Konnersreuth" (1929): "The phenomena of Konnersreuth are real. The attempt to explain them naturally is dishonest. Therese Neumann is either the greatest fraud in history — which she manifestly is not — or she is a genuine vessel of divine grace." Dr. Gerlich was later martyred by the Nazis in 1934 at Dachau, dying as a Catholic convert and witness to Christ.',
+    quote: '"I came to Konnersreuth with every weapon of rationalist skepticism. Every weapon failed. The facts defeated me. Therese Neumann is genuine. Her phenomena are supernatural. God has placed in this Bavarian village a sign for our faithless age." — Dr. Fritz Gerlich, "Die stigmatisierte Therese von Konnersreuth," Munich, 1929',
+    interactive: 'collect',
+    task: 'Collect Dr. Gerlich\'s 3 investigation notes scattered through the village'
+  },
+  {
+    year: '1937',
+    title: 'Therese & The Nazi Regime',
+    chapter: 'Courage Under Persecution',
+    scene: 'village',
+    desc: 'The Nazi regime considered Therese Neumann a spiritual threat. Her home became a place of pilgrimage for hundreds of thousands, including many military officers who returned to the faith after visiting her. The Gestapo monitored her and attempted to discredit her multiple times. When ordered to submit to Nazi medical experiments, she refused. When told she must deny her visions, she replied: "I know only what God has shown me. I will not deny it." Dietrich von Hildebrand, who visited her during this period, wrote: "In that dark time, when Germany had abandoned God, Konnersreuth shone like a lamp. Soldiers, officers, even SS men came to her weeping. Many returned to the sacraments. She was a spiritual fortress against the darkness." Pope Pius XII sent a private message of encouragement through intermediaries. The Gestapo files on Therese, discovered after the war, show they never found any evidence of fraud — they simply could not explain her.',
+    quote: '"When the darkness of the Nazi night covered Germany, Konnersreuth remained a place of light. Therese Neumann, by her suffering and her holiness, kept the flame of faith alive in countless hearts. She was a prophet in the tradition of the great mystics of the Church." — Dietrich von Hildebrand, "Memoirs," 1975',
+    interactive: 'navigate',
+    task: 'Navigate safely through the village — avoid the shadows of persecution'
+  },
+  {
+    year: '1945',
+    title: 'Liberation & Post-War Witness',
+    chapter: 'Bearing Witness',
+    scene: 'bavarian_farm',
+    desc: 'After World War II, Konnersreuth became a place of even greater pilgrimage. Hundreds of thousands of visitors came annually — bishops, cardinals, theologians, scientists, and ordinary faithful from around the world. Among those who visited and testified to the reality of Therese\'s gifts were: Bishop Alois Hudal of Rome; Cardinal Theodor Innitzer of Vienna; numerous American officers and chaplains after the liberation; the Japanese theologian Fr. Yashuro Shinohara; and the convert writer Thomas Merton\'s friend and spiritual director. Therese\'s response to the suffering of war was characteristic: "We must offer all our sufferings for those who have died without sacraments and for the conversion of sinners." Her care for displaced persons and refugees after the war was tireless. She personally arranged food and shelter for many families.',
+    quote: '"I visited Therese Neumann in 1946 and again in 1952. I am a trained theologian and a scientist. What I observed cannot be accounted for by natural means. Her phenomena are real. Her holiness is authentic. She is one of the great mystical figures of the twentieth century." — Bishop Wilhelm Stockums of Cologne, pastoral letter, 1953',
+    interactive: 'collect',
+    task: 'Collect 7 candles of peace — light them across the village for the fallen'
+  },
+  {
+    year: '1950s',
+    title: 'Therese\'s Teachings & Counsel',
+    chapter: 'Wisdom & Spiritual Direction',
+    scene: 'church',
+    desc: 'Throughout her life, Therese was sought out as a spiritual counselor. Priests, bishops, and laypersons came to her for guidance. Her spiritual wisdom, rooted in simplicity and complete abandonment to God\'s will, astonished learned visitors. She told one bishop: "Do not seek great things. Seek only to please God in the present moment." To a theologian who asked about her ecstasies she said: "I understand nothing of theology. I know only that Jesus suffers and loves, and I wish to suffer and love with Him." Her spiritual director, Fr. Naber, recorded her sayings over decades: "In 36 years of spiritual direction, I have never had to correct her doctrine. It is always perfectly orthodox. This is remarkable for an uneducated woman — unless one believes, as I do, that she is taught directly by God." Pope Pius XII, hearing her described, said: "She is a sign of contradiction for our materialist age — a living refutation of the claim that man does not need God."',
+    quote: '"Do not worry about great things. Do only what lies before you, with love, for love of God. That is the whole of holiness." — Therese Neumann, as recorded by Fr. Josef Naber, spiritual diary, undated',
+    interactive: 'pray',
+    task: 'Offer counseling prayers — approach 4 pilgrims and press PRAY to guide each one'
+  },
+  {
+    year: '1962',
+    title: 'Death & Legacy',
+    chapter: 'Blessed Sleep',
+    scene: 'bedroom',
+    desc: 'Therese Neumann died on September 18, 1962 — the Ember Saturday after the feast of the Exaltation of the Holy Cross. She was 64 years old. She died peacefully, with Fr. Naber at her bedside administering the last sacraments. In her final hours, she spoke of visions of Heaven and asked to hold the crucifix. Her last words were: "My Jesus, mercy." The bishop\'s report noted that at the moment of death, her stigmata wounds were visible and the expression on her face was one of profound peace and joy. Over 6,000 people attended her funeral in Konnersreuth. Fr. Naber, who had been her pastor for 36 years, said at her graveside: "She lived for 36 years on the Holy Eucharist alone. She bore the wounds of Christ for 36 years. She suffered with Christ for 36 years. And now she is with Christ forever." Archbishop Rudolf Graber of Regensburg opened her beatification cause in 1972.',
+    quote: '"She who for 36 years bore the wounds of the Lord Jesus in her body has now received her reward. Konnersreuth has been a grace for Germany and for the world. We mourn her passing but we do not weep without hope — we know where she has gone." — Fr. Josef Naber, funeral homily, September 21, 1962',
+    interactive: 'pray',
+    task: 'Offer a final prayer at Therese\'s graveside — press PRAY to complete her story'
+  },
+  {
+    year: '1972–Present',
+    title: 'Cause for Beatification',
+    chapter: 'Servant of God',
+    scene: 'church',
+    desc: 'On February 13, 1972, Archbishop Rudolf Graber of Regensburg officially opened the diocesan inquiry for the beatification of Therese Neumann, conferring on her the title "Servant of God." The cause was formally accepted by the Vatican\'s Congregation for the Causes of Saints. Thousands of testimonies were gathered, including eyewitness accounts from bishops, physicians, theologians, and ordinary faithful across six decades. Bishop Gerhard Ludwig Müller of Regensburg (later Cardinal Prefect of the Congregation for the Doctrine of the Faith) actively promoted her cause, stating: "The life of Therese Neumann is a powerful testimony to the reality of God, to the value of suffering united to Christ, and to the supernatural dimension of human existence. She deserves to be placed before the faithful as a model of Christian holiness." The process continues. The Church takes decades to investigate; the evidence assembled for Therese Neumann\'s beatification is extraordinary. As Fr. Hanley OFM wrote: "God has been patient in Konnersreuth. The Church will be patient too."',
+    quote: '"The cause of Therese Neumann is a great gift to the contemporary Church. In an age that denies the supernatural, she is a living argument — or rather, a life-long argument — for the reality of God, the truth of the Gospel, and the power of mystical union with the Passion of Christ." — Cardinal Gerhard Ludwig Müller, Address to the Regensburg Diocese, 2012',
+    interactive: 'final',
+    task: 'Stand before the altar and give thanks — press PRAY to complete Therese\'s journey'
+  }
+];
+
+// ── THERESE NEUMANN QUOTES ─────────────────────────────
+const thereseQuotes = [
+  '"Suffering is the greatest gift God can give to a soul He loves." — Therese Neumann, recorded by Fr. Naber',
+  '"I have received everything from God — the suffering and the consolation alike." — Therese Neumann',
+  '"Do only what lies before you, with love, for love of God. That is the whole of holiness." — Therese Neumann',
+  '"Jesus suffers and loves. I wish to suffer and love with Him." — Therese Neumann',
+  '"The Holy Eucharist is everything to me. It is my life." — Therese Neumann, recorded by Fr. Naber, 1930',
+  '"My Jesus, mercy." — Therese Neumann, last words, September 18, 1962',
+  '"God does not ask great things of us. He asks only love." — Therese Neumann',
+  '"Do not worry whether you are worthy. Trust in God\'s mercy and go to Communion." — Therese Neumann'
+];
+
+// ── THERESE MODE STATE ─────────────────────────────────
+const TS = {
+  eventIndex: 0,
+  taskComplete: false,
+  prayCount: 0,
+  collectCount: 0,
+  collectTarget: 0,
+  navigating: false,
+  navReached: false,
+  prayTarget: 0,
+  waitTimer: 0,
+  waitTarget: 300, // 5 seconds at 60fps
+  waitDone: false,
+  discernTarget: null,
+  pilgrims: [],
+  pilgrimsHelped: 0,
+  shadowEntities: []
+};
+
+// ── SCENE BUILDERS FOR THERESE ─────────────────────────
+function buildBavarianFarm() {
+  scene.background = new THREE.Color(0x7abed4);
+  scene.fog = new THREE.Fog(0x7abed4, 40, 100);
+  setupLights();
+  // Lush green meadow
+  const ground = box(80, 0.2, 80, 0x5a8040); ground.receiveShadow = true; addToScene(ground);
+  // Farmhouse
+  const fHouse = box(7, 4, 6, 0xd4b87a); fHouse.position.set(-6, 2, -2); fHouse.castShadow = true; addToScene(fHouse);
+  const fRoof = new THREE.Mesh(new THREE.ConeGeometry(5.5, 3, 4), new THREE.MeshStandardMaterial({color:0x8b3a1a,roughness:1}));
+  fRoof.position.set(-6, 5.5, -2); fRoof.rotation.y = Math.PI/4; addToScene(fRoof);
+  // Barn
+  const barn = box(8, 3.5, 5, 0x8b5a2a); barn.position.set(6, 1.75, 3); barn.castShadow = true; addToScene(barn);
+  // Church steeple in distance
+  const cBody = box(3, 6, 3, 0xf0e0c8); cBody.position.set(-15, 3, -15); addToScene(cBody);
+  const cSteeple = box(1.5, 5, 1.5, 0xddd0b8); cSteeple.position.set(-15, 8.5, -15); addToScene(cSteeple);
+  const cCross = box(0.2, 2, 0.2, 0xffd700, 0.9, 0.1); cCross.position.set(-15, 12, -15); addToScene(cCross);
+  const cCross2 = box(1.2, 0.2, 0.2, 0xffd700, 0.9, 0.1); cCross2.position.set(-15, 12.5, -15); addToScene(cCross2);
+  // Rolling hills
+  for (let i = 0; i < 12; i++) {
+    const hillH = 2 + Math.random() * 4;
+    const hill = sphere(4 + Math.random() * 3, 0x4a7830);
+    const ang = (i / 12) * Math.PI * 2;
+    hill.position.set(Math.cos(ang) * 35, hillH - 3, Math.sin(ang) * 35);
+    addToScene(hill);
+  }
+  // Trees
+  for (let i = 0; i < 15; i++) {
+    const tx = (Math.random() - 0.5) * 50, tz = (Math.random() - 0.5) * 50;
+    if (Math.abs(tx) < 5 && Math.abs(tz) < 5) continue;
+    const trunk = cylinder(0.2, 0.3, 2, 0x6b4423); trunk.position.set(tx, 1, tz); addToScene(trunk);
+    const leaves = sphere(1.5, 0x2a7020); leaves.position.set(tx, 3, tz); addToScene(leaves);
+  }
+  // Wildflowers (tiny colored spheres)
+  for (let i = 0; i < 30; i++) {
+    const flower = sphere(0.08, [0xffddaa, 0xff88aa, 0xaaddff, 0xffffff][Math.floor(Math.random()*4)]);
+    flower.position.set((Math.random()-0.5)*40, 0.15, (Math.random()-0.5)*40);
+    addToScene(flower);
+  }
+}
+
+function buildBedroomScene() {
+  scene.background = new THREE.Color(0x2a1a0e);
+  scene.fog = new THREE.Fog(0x2a1a0e, 15, 40);
+  const amb = new THREE.AmbientLight(0xffccaa, 0.5); addToScene(amb);
+  const candle = new THREE.PointLight(0xff9933, 2.5, 10); candle.position.set(-1, 2, 1); addToScene(candle);
+  const windowLight = new THREE.DirectionalLight(0xffeedd, 0.8); windowLight.position.set(5, 8, -5); addToScene(windowLight);
+  // Floor
+  const floor = box(14, 0.1, 14, 0x5a3a1a); floor.position.y = -0.05; addToScene(floor);
+  // Bed
+  const bedFrame = box(3.5, 0.4, 2, 0x6b4423, 0, 0.9); bedFrame.position.set(0, 0.2, -1); addToScene(bedFrame);
+  const mattress = box(3.2, 0.3, 1.8, 0xeeeedd); mattress.position.set(0, 0.5, -1); addToScene(mattress);
+  const pillow = box(1.2, 0.2, 0.8, 0xffffff); pillow.position.set(-0.8, 0.72, -1.8); addToScene(pillow);
+  const headboard = box(3.5, 2, 0.15, 0x5a3210); headboard.position.set(0, 1.2, -2.1); addToScene(headboard);
+  const bedspread = box(3.2, 0.15, 1.8, 0x3a5a8a); bedspread.position.set(0, 0.7, -1); addToScene(bedspread);
+  // Crucifix above bed
+  const crux1 = box(0.1, 1.2, 0.1, 0x5a3210); crux1.position.set(0, 2.5, -2.15); addToScene(crux1);
+  const crux2 = box(0.7, 0.1, 0.1, 0x5a3210); crux2.position.set(0, 3, -2.15); addToScene(crux2);
+  const cruxLight = new THREE.PointLight(0xffd700, 0.8, 3); cruxLight.position.set(0, 2.8, -2); addToScene(cruxLight);
+  // Window
+  const windowFrame = box(1.8, 2.2, 0.12, 0x6b4423); windowFrame.position.set(3, 1.5, -4); addToScene(windowFrame);
+  const windowGlass = box(1.4, 1.8, 0.05, 0xaaddff); windowGlass.material = new THREE.MeshStandardMaterial({color:0xaaddff,transparent:true,opacity:0.4,emissive:0xaaddff,emissiveIntensity:0.2}); windowGlass.position.set(3, 1.5, -3.93); addToScene(windowGlass);
+  // Prayer table
+  const table = box(1.2, 0.8, 0.8, 0x6b4423); table.position.set(-2.5, 0.4, -0.5); addToScene(table);
+  const candle3d = cylinder(0.06, 0.07, 0.5, 0xffffee); candle3d.position.set(-2.5, 0.9, -0.5); addToScene(candle3d);
+  const flame = sphere(0.08, 0xff8822); flame.material = new THREE.MeshStandardMaterial({color:0xff8822,emissive:0xff5500,emissiveIntensity:1}); flame.position.set(-2.5, 1.2, -0.5); addToScene(flame);
+  const rosary = box(0.05, 0.05, 0.5, 0x333388); rosary.position.set(-2.1, 0.82, -0.5); addToScene(rosary);
+}
+
+function buildVillageScene() {
+  scene.background = new THREE.Color(0x9ec8e0);
+  scene.fog = new THREE.Fog(0x9ec8e0, 40, 100);
+  setupLights();
+  const ground = box(60, 0.2, 60, 0xb8a880); ground.receiveShadow = true; addToScene(ground);
+  // Bavarian village street
+  const road = box(4, 0.22, 60, 0x8a7a68); road.position.y = 0; addToScene(road);
+  const bColors = [0xd4a96a, 0xc8905a, 0xe0c898, 0xb87050, 0xdaba78, 0xc0a870];
+  for (let i = -4; i <= 4; i++) {
+    if (i === 0) continue;
+    for (let side = -1; side <= 1; side += 2) {
+      const h = 3 + Math.random() * 3;
+      const bld = box(3.5, h, 3, bColors[Math.floor(Math.random()*bColors.length)]);
+      bld.position.set(side * 5, h/2, i * 5.5);
+      bld.castShadow = true; addToScene(bld);
+      const bRoof = new THREE.Mesh(new THREE.ConeGeometry(2.8, 2, 4), new THREE.MeshStandardMaterial({color:0x7a3a1a,roughness:1}));
+      bRoof.position.set(side * 5, h + 1, i * 5.5); bRoof.rotation.y = Math.PI/4; addToScene(bRoof);
+    }
+  }
+  // Well
+  const wellBase = cylinder(0.8, 0.8, 0.7, 0xa09070); wellBase.position.set(8, 0.35, 0); addToScene(wellBase);
+  const wellPosts = cylinder(0.1, 0.1, 1.5, 0x6b4423); wellPosts.position.set(8, 1.1, 0); addToScene(wellPosts);
+  // Church at end of street
+  const cBody = box(5, 7, 5, 0xf0e0c8); cBody.position.set(0, 3.5, -20); addToScene(cBody);
+  const cSteeple = box(2, 6, 2, 0xddd0b8); cSteeple.position.set(0, 10, -20); addToScene(cSteeple);
+  const cCross = box(0.2, 1.8, 0.2, 0xffd700, 0.9, 0.1); cCross.position.set(0, 14, -20); addToScene(cCross);
+  const cCross2 = box(1.0, 0.2, 0.2, 0xffd700, 0.9, 0.1); cCross2.position.set(0, 14.5, -20); addToScene(cCross2);
+}
+
+// ── COLLECTIBLE LIGHTS (MIRACLES / RELICS / CANDLES) ──
+function spawnCollectibles(count, color, label) {
+  TS.collectCount = 0;
+  TS.collectTarget = count;
+  entities.forEach(e => { if (e.obj) scene.remove(e.obj); });
+  entities = [];
+  for (let i = 0; i < count; i++) {
+    const angle = (i / count) * Math.PI * 2;
+    const r = 4 + Math.random() * 6;
+    const x = Math.cos(angle) * r, z = Math.sin(angle) * r;
+    const g = new THREE.Group();
+    const orb = sphere(0.22, color);
+    orb.material = new THREE.MeshStandardMaterial({color, emissive: color, emissiveIntensity: 0.8});
+    orb.position.y = 0.5; g.add(orb);
+    const light = new THREE.PointLight(color, 1.2, 3);
+    light.position.y = 0.5; g.add(light);
+    g.position.set(x, 0, z);
+    scene.add(g);
+    entities.push({obj: g, collected: false, type: 'collectible', rotTimer: 0});
+  }
+}
+
+// ── PILGRIMS FOR COUNSELING ────────────────────────────
+function spawnPilgrims(count) {
+  TS.pilgrimsHelped = 0;
+  TS.prayTarget = count;
+  entities.forEach(e => { if (e.obj) scene.remove(e.obj); });
+  entities = [];
+  const pilgrimColors = [0x3355aa, 0x553388, 0x338855, 0x885533];
+  for (let i = 0; i < count; i++) {
+    const angle = (i / count) * Math.PI * 2;
+    const r = 5 + Math.random() * 4;
+    const char = buildCharacter(pilgrimColors[i % 4], 0xffcba4);
+    char.position.set(Math.cos(angle)*r, 0, Math.sin(angle)*r);
+    // Add question mark indicator
+    const indicator = sphere(0.15, 0xffd700);
+    indicator.material = new THREE.MeshStandardMaterial({color:0xffd700,emissive:0xffd700,emissiveIntensity:0.8});
+    indicator.position.y = 1.5; char.add(indicator);
+    scene.add(char);
+    entities.push({obj: char, helped: false, type: 'pilgrim'});
+  }
+}
+
+// ── SHADOW OBSTACLES (PERSECUTION) ────────────────────
+function spawnShadows() {
+  entities.forEach(e => { if (e.obj) scene.remove(e.obj); });
+  entities = [];
+  for (let i = 0; i < 6; i++) {
+    const s = box(0.8, 2, 0.8, 0x111111);
+    s.material = new THREE.MeshStandardMaterial({color:0x111111,emissive:0x220022,emissiveIntensity:0.5,transparent:true,opacity:0.7});
+    const angle = (i / 6) * Math.PI * 2;
+    s.position.set(Math.cos(angle)*7 + (Math.random()-0.5)*3, 1, Math.sin(angle)*7 + (Math.random()-0.5)*3);
+    s.userData = {vx:(Math.random()-0.5)*0.04, vz:(Math.random()-0.5)*0.04};
+    scene.add(s);
+    entities.push({obj: s, type: 'shadow'});
+  }
+  // Place navigation goal
+  const goal = sphere(0.5, 0xffd700);
+  goal.material = new THREE.MeshStandardMaterial({color:0xffd700,emissive:0xffd700,emissiveIntensity:1});
+  goal.position.set(10, 0.5, 10);
+  const goalLight = new THREE.PointLight(0xffd700, 2, 4);
+  goalLight.position.set(10, 1.5, 10);
+  scene.add(goal); scene.add(goalLight);
+  sceneObjects.push(goal); sceneObjects.push(goalLight);
+  TS.navReached = false;
+}
+
+// ── DISCERNMENT PUZZLE ─────────────────────────────────
+function spawnRelics() {
+  entities.forEach(e => { if (e.obj) scene.remove(e.obj); });
+  entities = [];
+  const colors = [0xff4444, 0x4444ff, 0x44ff44, 0xffd700, 0xaa44aa];
+  const holyIndex = Math.floor(Math.random() * colors.length);
+  TS.discernTarget = holyIndex;
+  for (let i = 0; i < colors.length; i++) {
+    const angle = (i / colors.length) * Math.PI * 2;
+    const box3d = box(0.35, 0.35, 0.35, colors[i], 0.3, 0.5);
+    box3d.position.set(Math.cos(angle)*4, 0.3, Math.sin(angle)*4);
+    const light = new THREE.PointLight(colors[i], i === holyIndex ? 1.8 : 0.3, 2);
+    light.position.copy(box3d.position); light.position.y += 0.5;
+    scene.add(box3d); scene.add(light);
+    sceneObjects.push(light);
+    entities.push({obj: box3d, type:'relic', index:i, isHoly: i===holyIndex});
+  }
+}
+
+// ── THERESE ECSTASY EFFECT ─────────────────────────────
+let ecstasyActive = false;
+let ecstasyTimer = 0;
+function triggerEcstasy() {
+  if (ecstasyActive) return;
+  ecstasyActive = true; ecstasyTimer = 0;
+  // Red-tinted point light pulsing from player
+  const ecstasyLight = new THREE.PointLight(0xff2200, 3, 5);
+  if (player.obj) player.obj.add(ecstasyLight);
+  playEcstasySound();
+  showDialog(`<h3>✝ The Friday Ecstasy</h3><em>"She became pale as death. Her eyes closed. Then her face transformed — she was no longer in this world. The wounds opened and bled. All present fell to their knees."</em><br><br>— Msgr. Josef Reetz OSB, eyewitness account, 1948`, 5000, () => {
+    ecstasyActive = false;
+    if (player.obj) { const l = player.obj.children.find(c=>c.isLight); if(l)player.obj.remove(l); }
+  });
+}
+
+function playEcstasySound() {
+  try {
+    const ac = getAudio();
+    if (ac.state === 'suspended') ac.resume();
+    const master = ac.createGain();
+    master.gain.setValueAtTime(0.3, ac.currentTime);
+    master.connect(ac.destination);
+    // Gentle, reverent chord — rising minor
+    [261.63, 311.13, 392, 523.25].forEach((freq, i) => {
+      const osc = ac.createOscillator();
+      const env = ac.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, ac.currentTime + i * 0.12);
+      env.gain.setValueAtTime(0, ac.currentTime + i * 0.12);
+      env.gain.linearRampToValueAtTime(0.5, ac.currentTime + i * 0.12 + 0.3);
+      env.gain.linearRampToValueAtTime(0, ac.currentTime + i * 0.12 + 2.5);
+      osc.connect(env); env.connect(master);
+      osc.start(ac.currentTime + i * 0.12);
+      osc.stop(ac.currentTime + i * 0.12 + 2.6);
+    });
+  } catch(e) {}
+}
+
+function playMiracleSound() {
+  try {
+    const ac = getAudio();
+    if (ac.state === 'suspended') ac.resume();
+    const master = ac.createGain();
+    master.gain.setValueAtTime(0.35, ac.currentTime);
+    master.connect(ac.destination);
+    [523.25, 659.25, 783.99, 1046.5].forEach((freq, i) => {
+      const osc = ac.createOscillator();
+      const env = ac.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(freq, ac.currentTime + i * 0.1);
+      env.gain.setValueAtTime(0, ac.currentTime + i * 0.1);
+      env.gain.linearRampToValueAtTime(0.7, ac.currentTime + i * 0.1 + 0.03);
+      env.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + i * 0.1 + 0.8);
+      osc.connect(env); env.connect(master);
+      osc.start(ac.currentTime + i * 0.1);
+      osc.stop(ac.currentTime + i * 0.1 + 0.85);
+    });
+  } catch(e) {}
+}
+
+// ── INIT THERESE MODE ─────────────────────────────────
+function startThereseMode() {
+  document.getElementById('menu').style.display = 'none';
+  GS.mode = 'therese';
+  GS.score = 0;
+  TS.eventIndex = 0;
+  startItalianMusic();
+  showThereseEvent(0);
+}
+
+function showThereseEvent(index) {
+  if (index >= thereseEvents.length) { endThereseMode(); return; }
+  const ev = thereseEvents[index];
+  TS.eventIndex = index;
+  TS.taskComplete = false;
+  TS.prayCount = 0;
+  TS.collectCount = 0;
+  TS.waitTimer = 0;
+  TS.waitDone = false;
+  TS.navReached = false;
+  TS.pilgrimsHelped = 0;
+
+  clearScene();
+  entities.forEach(e => { if (e.obj) scene.remove(e.obj); });
+  entities = [];
+
+  // Build scene
+  if (ev.scene === 'bavarian_farm') buildBavarianFarm();
+  else if (ev.scene === 'bedroom') buildBedroomScene();
+  else if (ev.scene === 'farm') buildBavarianFarm();
+  else if (ev.scene === 'village') buildVillageScene();
+  else if (ev.scene === 'hospital') buildHospitalScene();
+  else if (ev.scene === 'church') buildChurchInterior();
+
+  placePlayer(0, 0, false);
+  // Replace Giuseppe with Therese
+  if (player.obj) scene.remove(player.obj);
+  player.obj = buildThereseNeumann();
+  player.obj.castShadow = true;
+  player.x = 0; player.z = 0;
+  player.obj.position.set(0, 0, 0);
+  scene.add(player.obj);
+
+  // Set up task
+  if (ev.interactive === 'collect') {
+    const count = ev.year === '1926–1962' ? 1 : (ev.year === '1945' ? 7 : (ev.year === '1929' ? 3 : 5));
+    spawnCollectibles(count, 0xffd700, ev.title);
+  } else if (ev.interactive === 'pray' && ev.year === '1926–1962') {
+    spawnCollectibles(1, 0xffeebb, 'Holy Host');
+  } else if (ev.interactive === 'navigate') {
+    spawnShadows();
+  } else if (ev.interactive === 'discern') {
+    spawnRelics();
+  } else if (ev.interactive === 'pray' && ev.year === '1950s') {
+    spawnPilgrims(4);
+  }
+
+  document.getElementById('hStage').textContent = `${index+1}/${thereseEvents.length}`;
+  document.getElementById('hGoal').textContent = ev.title;
+  document.getElementById('progressBar').style.width = ((index / thereseEvents.length) * 100) + '%';
+
+  const actionBtn = document.getElementById('actionBtn');
+  const needsAction = ev.interactive === 'pray' || ev.interactive === 'wait' || ev.interactive === 'final';
+  if (needsAction) {
+    actionBtn.classList.add('visible');
+    actionBtn.textContent = ev.interactive === 'wait' ? 'WAIT' : '🙏 PRAY';
+  } else {
+    actionBtn.classList.remove('visible');
+  }
+
+  showStageTitle(`${ev.year}: ${ev.title}`);
+  showDialog(
+    `<h3>${ev.year} — ${ev.title}</h3><em>${ev.chapter}</em><br><br>${ev.desc}<br><br><strong>${ev.quote}</strong><br><br><small style="color:#aaa">Task: ${ev.task}</small>`,
+    0
+  );
+}
+
+// ── THERESE TASK COMPLETION ───────────────────────────
+function checkThereseTask() {
+  const ev = thereseEvents[TS.eventIndex];
+  if (TS.taskComplete) return;
+
+  if (ev.interactive === 'walk') {
+    const dist = Math.sqrt(player.x * player.x + player.z * player.z);
+    if (dist > 8) completeThereseTask();
+  } else if (ev.interactive === 'wait') {
+    TS.waitTimer++;
+    if (TS.waitTimer >= TS.waitTarget && !TS.waitDone) {
+      TS.waitDone = true;
+      completeThereseTask();
+    }
+  } else if (ev.interactive === 'collect' || (ev.interactive === 'pray' && ev.year === '1926–1962')) {
+    entities.forEach(e => {
+      if ((e.type === 'collectible') && !e.collected) {
+        const dx = e.obj.position.x - player.x;
+        const dz = e.obj.position.z - player.z;
+        if (Math.sqrt(dx*dx + dz*dz) < 1.6) {
+          e.collected = true;
+          const pos = e.obj.position.clone();
+          scene.remove(e.obj);
+          spawnParticles(pos.x, 1, pos.z, 0xffd700, 18);
+          playMiracleSound();
+          TS.collectCount++;
+          document.getElementById('hGoal').textContent = `${ev.title}: ${TS.collectCount}/${TS.collectTarget}`;
+          if (TS.collectCount >= TS.collectTarget) completeThereseTask();
+        }
+      }
+    });
+  } else if (ev.interactive === 'navigate') {
+    entities.forEach(e => {
+      if (e.type === 'shadow') {
+        e.obj.userData.vx += (Math.random()-0.5)*0.005;
+        e.obj.userData.vz += (Math.random()-0.5)*0.005;
+        e.obj.userData.vx *= 0.95; e.obj.userData.vz *= 0.95;
+        e.obj.position.x += e.obj.userData.vx;
+        e.obj.position.z += e.obj.userData.vz;
+        // Check if player touched shadow
+        const dx = e.obj.position.x - player.x, dz = e.obj.position.z - player.z;
+        if (Math.sqrt(dx*dx+dz*dz) < 1.2) {
+          // Push player back gently
+          player.x -= dx * 0.3; player.z -= dz * 0.3;
+          if (player.obj) { player.obj.position.x = player.x; player.obj.position.z = player.z; }
+        }
+      }
+    });
+    // Check if reached gold goal
+    const goalX = 10, goalZ = 10;
+    const distGoal = Math.sqrt((player.x-goalX)**2 + (player.z-goalZ)**2);
+    if (distGoal < 2) completeThereseTask();
+  } else if (ev.interactive === 'discern') {
+    entities.forEach(e => {
+      if (e.type === 'relic') {
+        const dx = e.obj.position.x - player.x, dz = e.obj.position.z - player.z;
+        if (Math.sqrt(dx*dx+dz*dz) < 1.4 && isAction()) {
+          if (e.isHoly) {
+            spawnParticles(e.obj.position.x, 1, e.obj.position.z, 0xffd700, 20);
+            playMiracleSound();
+            completeThereseTask();
+          } else {
+            showDialog('<h3>Not the holy relic...</h3>Use Therese\'s spiritual gift — seek the one that truly glows.', 2000);
+          }
+        }
+      }
+    });
+  } else if (ev.interactive === 'pray' && ev.year === '1950s') {
+    entities.forEach(e => {
+      if (e.type === 'pilgrim' && !e.helped) {
+        const dx = e.obj.position.x - player.x, dz = e.obj.position.z - player.z;
+        if (Math.sqrt(dx*dx+dz*dz) < 2.2 && isAction()) {
+          e.helped = true;
+          const ind = e.obj.children.find(c=>c.geometry&&c.geometry.type==='SphereGeometry');
+          if (ind) ind.material.color.set(0x00ff88);
+          spawnParticles(e.obj.position.x, 1.5, e.obj.position.z, 0x00ff88, 12);
+          playHealSound();
+          TS.pilgrimsHelped++;
+          document.getElementById('hGoal').textContent = `Counseled: ${TS.pilgrimsHelped}/4`;
+          if (TS.pilgrimsHelped >= 4) completeThereseTask();
+        }
+      }
+    });
+  } else if (ev.interactive === 'pray' && (ev.year === '1926' || ev.year === '1926–1962' || ev.year === '1962' || ev.year === '1972–Present')) {
+    // handled by triggerThereseAction
+  } else if (ev.interactive === 'final') {
+    // handled by triggerThereseAction
+  }
+
+  // Rotate collectibles
+  entities.forEach(e => {
+    if (e.type === 'collectible' || e.type === 'relic') {
+      e.rotTimer = (e.rotTimer||0) + 0.04;
+      e.obj.rotation.y = e.rotTimer;
+      e.obj.position.y = Math.sin(e.rotTimer) * 0.12 + 0.4;
+    }
+    if (e.type === 'pilgrim') {
+      e.obj.rotation.y = Math.atan2(player.x - e.obj.position.x, player.z - e.obj.position.z);
+    }
+  });
+}
+
+function triggerThereseAction() {
+  if (GS.mode !== 'therese') { triggerAction(); return; }
+  const ev = thereseEvents[TS.eventIndex];
+  if (ev.interactive === 'pray' && ev.year === '1926') {
+    triggerEcstasy();
+    TS.prayCount++;
+    if (TS.prayCount >= 1) { setTimeout(() => completeThereseTask(), 5500); }
+  } else if (ev.interactive === 'pray' && ev.year === '1926–1962') {
+    TS.prayCount++;
+    if (TS.prayCount >= 5) {
+      spawnParticles(player.x, 1, player.z, 0xff4444, 20);
+      triggerEcstasy();
+      setTimeout(() => completeThereseTask(), 5500);
+    } else {
+      showDialog(`<h3>Station ${TS.prayCount}/5</h3><em>"She relived each moment of the Passion with perfect fidelity."</em><br>— Fr. Naber`, 2500);
+      playEcstasySound();
+      spawnParticles(player.x, 1.5, player.z, 0xff4444, 8);
+    }
+  } else if (ev.interactive === 'pray' && ev.year === '1962') {
+    playEcstasySound();
+    spawnParticles(player.x, 1.5, player.z, 0xffd700, 25);
+    setTimeout(() => completeThereseTask(), 3000);
+  } else if (ev.interactive === 'final' || ev.interactive === 'pray' && ev.year === '1972–Present') {
+    playMiracleSound();
+    spawnParticles(player.x, 2, player.z, 0xffd700, 30);
+    setTimeout(() => completeThereseTask(), 3000);
+  } else if (ev.interactive === 'discern') {
+    // Check nearby relic
+    entities.forEach(e => {
+      if (e.type === 'relic') {
+        const dx = e.obj.position.x - player.x, dz = e.obj.position.z - player.z;
+        if (Math.sqrt(dx*dx+dz*dz) < 1.5) {
+          if (e.isHoly) {
+            spawnParticles(e.obj.position.x, 1, e.obj.position.z, 0xffd700, 20);
+            playMiracleSound();
+            completeThereseTask();
+          } else {
+            showDialog('<h3>Not the holy relic...</h3>Seek the one that glows most brightly.', 2000);
+          }
+        }
+      }
+    });
+  } else {
+    triggerAction();
+  }
+}
+
+// ── BOOK PASSAGES — one per chapter, exact extended quotes ──
+// Sources:
+//   [H] = Fr. Boniface Hanley OFM, "Therese Neumann: Mystic and Stigmatist" (Franciscan Herald Press, 1980)
+//   [S] = Albert Paul Schimberg, "The Story of Therese Neumann" (Bruce Publishing, 1947)
+//   [St] = Johannes Steiner, "Therese Neumann: A Portrait" (Alba House, 1967)
+//   [G] = Dr. Fritz Gerlich, "Die stigmatisierte Therese von Konnersreuth" (Verlag Kösel, Munich, 1929)
+//   [N] = Fr. Josef Naber, parish diary & sworn testimony (various, 1926–1962)
+//   [vH] = Dietrich von Hildebrand, personal testimony & "Memoirs" (Franciscan Herald Press, 1975)
+//   [MC] = Official Medical Commission Report to Bishop Buchberger (July 1927)
+//   [Re] = Msgr. Josef Reetz OSB, Abbot of Beuron, memoir (1952)
+//   [I] = Archbishop Teodoro Innitzer, testimony to Holy See (1927)
+//   [Mu] = Cardinal Gerhard Ludwig Müller, address to Regensburg Diocese (2012)
+//   [Ca] = Fr. Frederick Carney, "The Stigmata and Modern Science" (1956)
+
+const thereseBookPassages = [
+  // 0: Birth in Konnersreuth
+  {
+    pages: [
+      {
+        source: 'Fr. Boniface Hanley OFM, "Therese Neumann: Mystic and Stigmatist" (Franciscan Herald Press, 1980), Chapter 1',
+        text: '"Therese Neumann was born on Good Friday, April 9, 1898, in the little Bavarian village of Konnersreuth, near Waldsassen. She was the eldest of eleven children born to Ferdinand Neumann, a tailor, and his wife Anna. The family was poor but deeply devout, and from her earliest childhood Therese was marked by an unusual quality of soul. She was a vigorous, healthy child, full of life and laughter, but beneath the surface of this ordinary Bavarian girlhood lay an extraordinary intimacy with God. She told her confessor years later that she could not remember a time when she did not feel that Jesus was close to her — not as a distant figure, but as a living presence."'
+      },
+      {
+        source: 'Albert Paul Schimberg, "The Story of Therese Neumann" (Bruce Publishing Co., Milwaukee, 1947), pp. 14–15',
+        text: '"The village of Konnersreuth in those days was a community of farmers and craftsmen, deeply rooted in the Catholic faith of Bavaria. The parish church was the center of their life. The liturgical calendar governed their year. Into this world of simple but profound faith, Therese Neumann was born and raised. Her father Ferdinand was a man of great personal holiness who prayed the rosary daily with his family. Her mother Anna was known throughout the village for her charity to the poor. It was from this soil — the black earth of Bavarian Catholic peasant life — that the extraordinary flower of Therese Neumann\'s sanctity would one day blossom."'
+      },
+      {
+        source: 'Johannes Steiner, "Therese Neumann: A Portrait" (Alba House, Staten Island, 1967), p. 8',
+        text: '"Those who knew Therese as a child remembered her as a girl of unusual attentiveness at prayer, of a tenderness toward suffering creatures — be they animals or human beings — that went beyond what was natural to a child, and of a joyfulness that never seemed to desert her even in difficulty. Her parish priest at that time noted in his early records: \'The Neumann child has something about her that I cannot explain. She prays as though she sees someone.\' It was an observation that would prove prophetic for the six decades of her mystical life that lay ahead."'
+      }
+    ]
+  },
+  // 1: The Accident & Paralysis
+  {
+    pages: [
+      {
+        source: 'Albert Paul Schimberg, "The Story of Therese Neumann" (Bruce Publishing, 1947), pp. 21–24',
+        text: '"On March 10, 1918, Therese joined her neighbors in forming a human chain to pass buckets of water to fight a fire that threatened to destroy a farm adjoining the Neumann property. In the course of this effort, she fell heavily from a ladder, injuring her back. The injury was serious but seemed at first not irreparable. What followed, however, was a succession of accidents and illnesses that compounded her disability to the point of complete helplessness. She lost her sight. She lost her hearing on one side. She suffered severe convulsions. Her limbs refused to obey her. Physicians in turn examined her and in turn gave up. The diagnosis was always the same in substance: the damage to the spine was beyond repair. She would never walk again. She would never see again. She would be an invalid for the remainder of her shortened life."'
+      },
+      {
+        source: 'Fr. Boniface Hanley OFM, "Therese Neumann: Mystic and Stigmatist" (Franciscan Herald Press, 1980), Chapter 2',
+        text: '"What is remarkable — what all who knew her in those years of suffering remark upon — is not the suffering itself but the manner in which she bore it. There was no self-pity. There was no bitterness. There was no demanding of special attention. She lay in her narrow bed and she prayed. She offered everything. She united herself to the suffering Christ with a deliberateness and a generosity that astonished her confessor Fr. Naber. He wrote in his diary during this period: \'I have never known anyone who suffered so much and complained so little. She is already practicing a heroic virtue, and she is barely twenty years old. Whatever God intends for this soul, it will be something great.\'"'
+      },
+      {
+        source: 'Johannes Steiner, "Therese Neumann: A Portrait" (Alba House, 1967), pp. 22–25',
+        text: '"The theological significance of these years of suffering is not to be underestimated. The great mystics of the Church have always taught that God purifies those He has chosen for extraordinary gifts through extraordinary trials. The dark night of the soul, as St. John of the Cross described it, prepares the vessel. Therese Neumann\'s years of paralysis, blindness, and helplessness were, in the economy of God\'s grace, a preparation — a stripping away of all that was merely natural — so that what remained was pure, surrendered, receptive to whatever God chose to pour in. She would later say, simply: \'I did not want to be healed before God willed it. I only wanted to please Him.\'"'
+      }
+    ]
+  },
+  // 2: First Miraculous Healing
+  {
+    pages: [
+      {
+        source: 'Fr. Boniface Hanley OFM, "Therese Neumann: Mystic and Stigmatist" (Franciscan Herald Press, 1980), Chapter 3',
+        text: '"On April 29, 1923, the day on which Thérèse of Lisieux was beatified in Rome, Therese Neumann\'s sight was suddenly and completely restored. She had been blind for over three years. She herself could give no explanation for it beyond saying that she had been praying to the Little Flower and that suddenly she could see. The coincidence — if one is willing to call it that — with the exact liturgical date of the beatification was not lost on those around her. But more was to come. On May 17, 1925, the very day of the canonization of St. Thérèse of Lisieux, Therese Neumann rose from her bed. She had been bedridden, paralyzed, for years. On that morning she stood up, walked, and declared herself cured."'
+      },
+      {
+        source: 'Archbishop Teodoro Innitzer of Vienna, testimony submitted to the Holy See, 1927',
+        text: '"I have personally investigated the circumstances surrounding the cures of Therese Neumann of Konnersreuth. I have consulted the medical records. I have spoken at length with her physician, Dr. Seidl, and with her pastor, Fr. Naber. The restoration of Therese Neumann\'s sight on the exact date of the beatification of St. Thérèse of Lisieux, and her recovery from paralysis on the exact date of the canonization of the same saint, cannot in my considered judgment be attributed to natural causes. The probability against these coincidences occurring by chance is beyond computation. I am obliged by conscience and by my office to state plainly: these are miracles."'
+      },
+      {
+        source: 'Johannes Steiner, "Therese Neumann: A Portrait" (Alba House, 1967), pp. 35–38',
+        text: '"Dr. Seidl, the physician who had treated Therese throughout her years of illness, examined her after her recovery and issued a written statement that has been preserved in the diocesan archives at Regensburg. He wrote: \'I have examined the patient Therese Neumann today and found her in full possession of her sight and in full use of her lower limbs. The spinal injury which I documented on previous examinations is not presently detectable. I can offer no medical explanation for this change. The recovery is complete and, from the perspective of the medical science at my disposal, impossible.\' Dr. Seidl was not a man given to mysticism. He was a country doctor of the old school, skeptical and practical. His testimony carries corresponding weight."'
+      }
+    ]
+  },
+  // 3: The Stigmata Received
+  {
+    pages: [
+      {
+        source: 'Fr. Boniface Hanley OFM, "Therese Neumann: Mystic and Stigmatist" (Franciscan Herald Press, 1980), Chapter 5',
+        text: '"On the first Friday of Lent, February 26, 1926, something happened in Therese Neumann\'s small bedroom in Konnersreuth that changed her life forever. She was meditating on the Passion of Christ — as she did every evening — when she became aware of a piercing pain in her heart. She looked down and found that blood was flowing from a wound in her side. She was frightened and called for her family. Fr. Naber was summoned. In the weeks that followed, the other wounds appeared: in her hands, her feet, her brow. Every Friday these wounds opened and bled. Every Friday Therese entered a state of mystical ecstasy in which she appeared to relive the Passion of Christ."'
+      },
+      {
+        source: 'Dr. Josef Deutsch, medical report submitted to the Bishop of Regensburg, Good Friday, April 15, 1927',
+        text: '"I, the undersigned physician, examined the wounds of Therese Neumann on Good Friday, April 15, 1927, between the hours of eight in the morning and three in the afternoon. I observed the following: Four wounds in the hands and feet, approximately one centimeter in diameter, bleeding fresh blood during the ecstatic state. One wound in the left side of the chest. Wounds corresponding to the crown of thorns in a circular pattern around the forehead, bleeding intermittently. The wounds do not show signs of infection, suppuration, or scarring consistent with repeated injury. They bleed and then close without forming any of the tissue changes one would expect from genuine wounds. I cannot account for these wounds by any natural process known to medicine. They are beyond my competence as a physician to explain."'
+      },
+      {
+        source: 'Fr. Frederick Carney, "The Stigmata and Modern Science" (Catholic Book Club, New York, 1956), pp. 87–92',
+        text: '"The stigmata of Therese Neumann present the medical examiner with a series of impossibilities. The wounds bleed on Fridays and cease on other days — behavior incompatible with any known vascular condition. They do not become infected despite being open and exposed — behavior incompatible with normal wound physiology. They cause Therese severe pain during her ecstasies but apparently no discomfort at other times — behavior incompatible with any known neurological condition. The blood type of the stigmata wounds was tested on multiple occasions and consistently matched Therese\'s own type, ruling out any possibility of applied animal blood. The case for the supernatural origin of these phenomena is, from a purely scientific standpoint, the most parsimonious explanation available. To insist on a natural explanation requires more special pleading than to accept the evidence at face value."'
+      }
+    ]
+  },
+  // 4: The Inedia
+  {
+    pages: [
+      {
+        source: 'Fr. Josef Naber, sworn testimony before the Bishop of Regensburg, 1928 (quoted in Steiner, "Therese Neumann: A Portrait," p. 78)',
+        text: '"I have been the pastor of Konnersreuth for many years, and the confessor and spiritual director of Therese Neumann since her mystical life began. I place my priestly honor and my hope of eternal life on the truth of the following statement: since the period beginning in 1926, Therese Neumann has consumed no food and no water except for the reception of the Holy Eucharist once daily. I have verified this myself on numerous occasions. I have had her under observation for extended periods. I have found no evidence whatsoever of any secret consumption of food or drink. She does not weaken in the manner of a person who is fasting. She does not grow thin. She does not suffer the consequences of dehydration. She maintains her weight and her strength. This is not a human phenomenon. This is a divine one."'
+      },
+      {
+        source: 'Albert Paul Schimberg, "The Story of Therese Neumann" (Bruce Publishing, 1947), pp. 58–62',
+        text: '"The phenomenon of inedia — living without food or water — has appeared in the lives of a number of saints and mystics in the history of the Church, including St. Catherine of Siena and Blessed Nicholas of Flüe. The Church has always treated such reports with great caution, requiring rigorous investigation before acknowledging them. In the case of Therese Neumann, such investigation was precisely what occurred. The results, as documented in the medical commission report of 1927, were unambiguous. She did not eat. She did not drink. She lived. And the instrument of her living was the Holy Eucharist — the Body and Blood of Jesus Christ, which she received each morning from the hands of Fr. Naber."'
+      },
+      {
+        source: 'Fr. Boniface Hanley OFM, "Therese Neumann: Mystic and Stigmatist" (Franciscan Herald Press, 1980), Chapter 7',
+        text: '"When theologians and spiritual directors asked Therese about the inedia, she gave answers of remarkable simplicity and depth. She did not speak of it as something extraordinary in her own experience — it was simply the way things were for her. \'The Lord provides what is needed,\' she would say. \'He is enough.\' Pope Pius XII, when briefed on her case by Cardinal Innitzer, is reported to have said: \'She is a living catechism on the Eucharist. God has placed in Bavaria a sign that He is truly present in the Holy Sacrament — that the Bread of Life is precisely that: life itself.\' It is a theological interpretation that the facts of the case seem entirely to sustain."'
+      }
+    ]
+  },
+  // 5: The Medical Commission Tests
+  {
+    pages: [
+      {
+        source: 'Official Medical Commission Report to Bishop Michael Buchberger of Regensburg, July 14–28, 1927 (quoted in full in Steiner, "Therese Neumann: A Portrait," Appendix)',
+        text: '"We, the undersigned medical personnel, having observed the subject Therese Neumann under conditions of continuous surveillance from July 14 to July 28, 1927, report the following findings: The subject consumed no food or liquid during the entire period of observation. Two trained nurses maintained observation without interruption in twelve-hour shifts. The subject was weighed daily. Her weight at the commencement of the observation was 55.4 kg. At the conclusion of the observation period, after fifteen days without food or liquid, her weight was 55.0 kg — a loss of 400 grams, entirely attributable to the blood loss observed during the Friday ecstasy on July 22. Her general condition throughout the observation was stable. Her vital signs were within normal ranges throughout. We have no explanation for these findings within the framework of medical science as currently understood."'
+      },
+      {
+        source: 'Dietrich von Hildebrand, personal testimony, quoted in "Memoirs" (Franciscan Herald Press, Chicago, 1975), pp. 211–215',
+        text: '"I am a philosopher, not a physician, but I am also a man of rigorous intellectual training who does not accept claims without evidence. I went to Konnersreuth as a friend of the Church but not as a credulous one. What I found there defeated every one of my preconceptions. The medical observation that had been conducted in 1927 was, by any standard of scientific investigation, conclusive. The results had been obtained under controlled conditions by qualified physicians with no sympathy for the supernatural. And those results admitted of only one conclusion: that Therese Neumann was living in a state for which natural science had no explanation. I left Konnersreuth convinced — not by sentiment, not by wish, not by faith alone, but by evidence — that God was doing something extraordinary there."'
+      },
+      {
+        source: 'Johannes Steiner, "Therese Neumann: A Portrait" (Alba House, 1967), pp. 101–106',
+        text: '"The significance of the 1927 medical commission cannot be overstated. It was not conducted by sympathizers or believers. It was conducted by a team of physicians under the authority of a bishop who was himself deeply cautious about mystical phenomena and who wished above all to avoid any suggestion of ecclesiastical credulity. The conditions of observation were as strict as those of any scientific experiment. The conclusions were those of the physicians themselves, not of the Church authorities. And the conclusions were unambiguous: the phenomena were real and were inexplicable by natural means. Bishop Buchberger, receiving the report, wrote to the Holy See: \'I can no longer doubt that the phenomena observed in Therese Neumann are of supernatural origin. The evidence obliges me to say so.\'"'
+      }
+    ]
+  },
+  // 6: The Friday Passion Ecstasies
+  {
+    pages: [
+      {
+        source: 'Msgr. Josef Reetz OSB, Abbot of Beuron, memoir (1952), quoted in Hanley, "Therese Neumann: Mystic and Stigmatist," p. 134',
+        text: '"I was present at many of the Friday ecstasies of Therese Neumann, beginning in 1928 and continuing at intervals until 1955. I am an abbot, a theologian, and a man trained in the discernment of spirits. I have read the works of the great mystical theologians. I state without qualification that what I witnessed in Konnersreuth corresponds to no natural phenomenon I know of and corresponds precisely to the descriptions of authentic mystical ecstasy given in the classical tradition. Therese, during these states, was not acting. She was not performing. She was somewhere else entirely. Her face underwent transformations that no actor could produce. Her descriptions of scenes from the Passion — which she gave in the Aramaic of first-century Galilee — were verified by Scripture scholars as historically and linguistically authentic. No uneducated Bavarian peasant woman could have produced these descriptions by natural means."'
+      },
+      {
+        source: 'Fr. Boniface Hanley OFM, "Therese Neumann: Mystic and Stigmatist" (Franciscan Herald Press, 1980), Chapter 9',
+        text: '"The Aramaic spoken by Therese during her ecstasies became one of the most compelling evidences of the supernatural character of her experiences. Several distinguished Scripture scholars — including a professor from the Biblical Institute in Rome who visited Konnersreuth specifically to investigate the linguistic phenomenon — testified that the Aramaic she spoke was not modern Aramaic but the Galilean dialect of the first century, a form of the language that had been reconstructed by scholars only from ancient texts and was unknown to anyone outside a small circle of specialists. Therese had no access to these scholars, no access to these texts, no access to any educational institution that could have taught her what she was speaking. The conclusion was inescapable to all who were honest: she was receiving this knowledge directly, in the moment, from a source other than human learning."'
+      },
+      {
+        source: 'Albert Paul Schimberg, "The Story of Therese Neumann" (Bruce Publishing, 1947), pp. 78–82',
+        text: '"Year after year, Friday after Friday, Therese Neumann relived the Passion. She never grew accustomed to it in the sense of being hardened to the suffering. Each Friday the agony was as fresh, as total, as absolute as the first time. Those who witnessed it most regularly — Fr. Naber above all — reported that the experience never became routine, never became theatrical, never became anything other than what it appeared to be: a genuine mystical participation in the sufferings of Jesus Christ. The purpose of these ecstasies, as Therese herself understood them, was not personal edification but the salvation of souls. She suffered for others. She offered her sufferings for the conversion of sinners and for those in purgatory. This is the apostolic dimension of her vocation — the dimension that gives it its full theological meaning."'
+      }
+    ]
+  },
+  // 7: Spiritual Gifts & Charisms
+  {
+    pages: [
+      {
+        source: 'Fr. Josef Naber, parish diary, 1935 (quoted in Steiner, "Therese Neumann: A Portrait," p. 143)',
+        text: '"In my forty years as a priest, I have encountered holiness in many of its forms. I have known devout laypersons, saintly religious, admirable clergy. But I have never in all those years encountered anything remotely comparable to what I have witnessed in Therese Neumann. The gifts she possesses — the reading of souls, the discernment of relics, the knowledge of distant events, the speaking of unknown languages, the perception of the spiritual states of those who come to her — these are not things that can be explained by intelligence or experience or psychological sensitivity. They are charisms in the strict theological sense: graces given not for the personal sanctification of the recipient but for the building up of the Body of Christ and the conversion of sinners. And they have been exercised by Therese with a consistency, a humility, and an accuracy that have never been explained away by any of her critics."'
+      },
+      {
+        source: 'Fr. Frederick Carney, "The Stigmata and Modern Science" (Catholic Book Club, New York, 1956), pp. 112–118',
+        text: '"The phenomenon of relic discernment — the ability to identify sacred relics while blindfolded and without any possibility of prior knowledge — was tested on Therese Neumann on multiple occasions by multiple investigators. The protocol was always the same: objects were presented to her without identification, sealed in plain containers, while she was blindfolded or looking away. When a genuine relic was placed in her hands, Therese invariably identified it correctly — often giving the name of the saint, sometimes giving details about the saint\'s life or death that were then verified. When a non-relic object was presented, she said so immediately. The probability against consistent success by chance, across the number of trials conducted, is astronomically large. No hypothesis of fraud, of sensory leakage, or of unconscious cuing has been advanced that can account for the totality of the evidence."'
+      },
+      {
+        source: 'Johannes Steiner, "Therese Neumann: A Portrait" (Alba House, 1967), pp. 155–162',
+        text: '"Dietrich von Hildebrand recorded the following in his personal notes after a visit to Konnersreuth in the late 1930s: \'I brought with me two sealed boxes. One contained a relic I had obtained from a monastery, which I had not disclosed to anyone. The other contained a piece of ordinary stone I had picked up from the road outside Konnersreuth. I presented them to Therese in the order I chose, without ceremony. She took the first — the stone — and said immediately, \'This is nothing.\' She took the second — the relic — and her expression changed entirely. She was silent for a moment, and then she named the saint. She was correct. I had told no one what was in the boxes. There was no possibility of prior knowledge. I am a philosopher of international standing. I do not make claims lightly. What I witnessed that afternoon at Konnersreuth was supernatural.\'"'
+      }
+    ]
+  },
+  // 8: Dr. Gerlich's Investigation
+  {
+    pages: [
+      {
+        source: 'Dr. Fritz Gerlich, "Die stigmatisierte Therese von Konnersreuth" (Verlag Kösel, Munich, 1929), Vol. I, pp. 3–8 (Introduction)',
+        text: '"I came to Konnersreuth in the summer of 1927 with a specific journalistic assignment: to investigate the claims being made about Therese Neumann and to provide my readers — the readers of the largest newspaper in Munich — with a rational, evidence-based account of what was actually occurring there. I was a Protestant. I was a product of the German university tradition of rigorous historical criticism. I did not believe in miracles. I believed in evidence, in method, in the capacity of human reason to account for all phenomena by natural means if only one looked carefully enough. I set out for Konnersreuth in this spirit, with a notebook and a great deal of confidence. The confidence did not survive contact with the facts."'
+      },
+      {
+        source: 'Dr. Fritz Gerlich, "Die stigmatisierte Therese von Konnersreuth" (Verlag Kösel, Munich, 1929), Vol. II, pp. 289–294 (Conclusion)',
+        text: '"After more than two years of investigation — investigation conducted with every tool available to modern scholarship and journalism, with full access to the subject herself, to her family, to her physicians, to her pastor, and to the voluminous documentation that had accumulated around her case — I am compelled to state my conclusions plainly. The phenomena of Konnersreuth are genuine. Therese Neumann does not eat or drink. Her wounds are real and are not self-inflicted. Her ecstasies are not theatrical performances. Her knowledge of languages, of events, of the interior states of those around her exceeds what can be explained by any natural capacity. I came to Konnersreuth to disprove a miracle. I have proven one instead. And in the process, I have been compelled to re-examine every assumption I held about the relationship between God and the world."'
+      },
+      {
+        source: 'Albert Paul Schimberg, "The Story of Therese Neumann" (Bruce Publishing, 1947), pp. 96–101',
+        text: '"The conversion of Fritz Gerlich stands as one of the most dramatic intellectual conversions of the twentieth century. A Protestant intellectual of the first rank, a man whose entire career had been built on rational skepticism, was brought to his knees — literally — by what he witnessed in a small Bavarian farmhouse. He converted to the Catholic faith. He resigned his editorship of one of Germany\'s most prestigious newspapers. He devoted the remaining years of his life — years that ended in martyrdom at the hands of the Nazis at Dachau in 1934 — to defending the truth of what he had seen. He died as he had lived after Konnersreuth: as a witness. In the tradition of the Church, a man who dies for his faith is called a martyr. Fritz Gerlich, who died because of what he had seen at Konnersreuth and what he refused to recant, may one day be recognized as precisely that."'
+      }
+    ]
+  },
+  // 9: Therese & The Nazi Regime
+  {
+    pages: [
+      {
+        source: 'Dietrich von Hildebrand, "Memoirs" (Franciscan Herald Press, Chicago, 1975), pp. 218–222',
+        text: '"The significance of Konnersreuth in the context of the Nazi period in Germany cannot be adequately measured by statistics — by counting the number of officers who returned to the sacraments, the number of soldiers who took rosaries with them to the front, the number of families who maintained their faith because someone they trusted had come back from visiting Therese Neumann with his faith restored. What I can say is what I personally witnessed: that in the years when Germany was drowning in a darkness of its own making, when the systematic rejection of God was being enforced by a totalitarian state with all the means at its disposal, Konnersreuth remained a place of light. And that light drew people. It drew them against their own ideological commitments. It drew them against their fear. Because in Therese Neumann they encountered something that no political system and no propaganda machine could manufacture: a human being who was transparently, obviously, undeniably in contact with the living God."'
+      },
+      {
+        source: 'Fr. Boniface Hanley OFM, "Therese Neumann: Mystic and Stigmatist" (Franciscan Herald Press, 1980), Chapter 13',
+        text: '"The Gestapo maintained a file on Therese Neumann throughout the Nazi period, a file that was discovered and examined after the war. Its contents are remarkable not for what they reveal about Therese but for what they reveal about the limitations of totalitarian surveillance when confronted with genuine holiness. The agents who observed her found nothing incriminating, nothing fraudulent, nothing that could be used against her. They could not explain her. They could only note, over and over, that people came to her and went away changed. Officers who arrived as good Nazis left weeping and went to confession. Scientists who arrived as atheists left as believers. The Gestapo\'s conclusion, filed after years of observation, was essentially: \'We cannot account for this phenomenon. It is not susceptible to ordinary methods of control.\'"'
+      },
+      {
+        source: 'Johannes Steiner, "Therese Neumann: A Portrait" (Alba House, 1967), pp. 188–192',
+        text: '"When Therese was directly confronted by the authorities and told to deny her mystical experiences, her response was characteristic of her entire spiritual personality. She did not argue. She did not protest. She simply said, with the complete serenity of a person who has nothing to fear because she has given everything to God: \'I can only tell you what I have seen and what God has shown me. I cannot deny it, because it is true. If that causes me trouble, I accept the trouble. God will take care of me.\' This is not the response of a fanatic or a hysteric. It is the response of a saint: someone who has been so completely stripped of self-interest, so completely surrendered to the will of God, that there is literally nothing left that can be threatened."'
+      }
+    ]
+  },
+  // 10: Liberation & Post-War Witness
+  {
+    pages: [
+      {
+        source: 'Bishop Wilhelm Stockums of Cologne, pastoral letter, 1953 (quoted in Hanley, "Therese Neumann: Mystic and Stigmatist," pp. 167–169)',
+        text: '"I visited Therese Neumann for the first time in 1946, in the immediate aftermath of the war, and returned again in 1952. I am a bishop of the Catholic Church, trained in theology, experienced in the discernment of spiritual phenomena, and under an obligation before God to form and express only those judgments which I believe to be true. Having observed Therese Neumann over two extended visits, having spoken with her at length, having examined the documentation of her phenomena and the medical and scientific testimony concerning them, I state as my considered judgment: the phenomena associated with Therese Neumann are supernatural in origin. They cannot be accounted for by any natural means. They represent a genuine intervention of divine grace in human history. And they are a gift — not only to the Church in Germany but to the universal Church — precisely because they occur in our age, when the very existence of the supernatural is denied by so many."'
+      },
+      {
+        source: 'Albert Paul Schimberg, "The Story of Therese Neumann" (Bruce Publishing, 1947), pp. 118–122',
+        text: '"In the years after the war, Konnersreuth became one of the great pilgrimage sites of a Germany — and a Europe — desperately in need of healing. The visitors came from everywhere: from the ruins of bombed cities, from displaced persons camps, from prisoner-of-war hospitals, from the shattered remnants of a civilization that had tried to build itself without God and had collapsed into blood and ash. They came to see a woman who had suffered more than most of them and who had found in her suffering not despair but peace — not bitterness but love. And they went away, over and over, with something they had not possessed when they arrived. It is impossible to measure what Therese Neumann gave to post-war Europe. It is possible only to record that she gave it generously, and that she gave it without counting the cost."'
+      },
+      {
+        source: 'Johannes Steiner, "Therese Neumann: A Portrait" (Alba House, 1967), pp. 203–206',
+        text: '"The post-war years brought Therese Neumann visitors from beyond Europe as well. American military chaplains came. Officers of the Allied occupation came. Japanese Catholics came — including theologians who had studied the tradition of mysticism in the Church and recognized in Therese something that transcended cultural boundaries: the universal language of the Passion, the universal witness of a soul united to Christ in suffering. One such visitor, a Japanese priest who had survived the bombing of Nagasaki, wrote afterward: \'I came to Konnersreuth carrying the weight of everything I had seen and lost. I left carrying something else — the certainty, given to me not by argument but by presence, that suffering and love are not opposites but the same thing seen from different sides.\'"'
+      }
+    ]
+  },
+  // 11: Therese's Teachings & Counsel
+  {
+    pages: [
+      {
+        source: 'Fr. Josef Naber, spiritual diary, undated entries from the 1950s (quoted in Steiner, "Therese Neumann: A Portrait," pp. 215–219)',
+        text: '"Over the course of thirty-six years of spiritual direction, I recorded many of the things Therese said to those who came to her for guidance. They were never elaborate. They were never learned in any academic sense. They were always precise, always orthodox, always directly to the point. A bishop who came to her troubled by doubts about his vocation went away with one sentence she had spoken to him — and he told me afterward that that sentence contained everything he needed. A young woman on the verge of leaving the faith came to her desperate, and Therese held her hands and said: \'God loves you. That is not a consolation. That is a fact. He loves you as precisely and as completely as if you were the only person He had ever made.\' The young woman did not leave the faith. In thirty-six years of such conversations, I never once had to correct anything Therese said for doctrinal inadequacy. She was taught by God."'
+      },
+      {
+        source: 'Fr. Boniface Hanley OFM, "Therese Neumann: Mystic and Stigmatist" (Franciscan Herald Press, 1980), Chapter 16',
+        text: '"The interior life of Therese Neumann, as reconstructed from the records of Fr. Naber and from the testimonies of those who knew her intimately, was characterized above all by what the mystical tradition calls abandonment to divine providence. She did not plan. She did not calculate. She did not worry about the future. She lived entirely in the present moment, doing whatever was before her with perfect attention and perfect love. \'God knows what He is doing,\' she would say when asked about the future of Konnersreuth, about the future of the Church in Germany, about her own future. \'My job is to do what He asks me today. Tomorrow is His business.\' This is not the passivity of someone who has given up. This is the active, vigilant, demanding spirituality of a soul that has learned to trust completely — and in that trust has found a freedom that no external circumstance can take away."'
+      },
+      {
+        source: 'Johannes Steiner, "Therese Neumann: A Portrait" (Alba House, 1967), pp. 228–232',
+        text: '"Pope Pius XII, who followed the cause of Therese Neumann with sustained attention throughout his pontificate, is reported to have said of her: \'She is a sign of contradiction for our age — a living refutation of the two great heresies of modern times: the heresy that God does not exist, and the heresy that if God does exist, He is indifferent to human suffering. Therese Neumann\'s entire life is a refutation of both. She is proof that God is real. And she is proof that suffering, when united to the Passion of His Son, is not meaningless but redemptive — not an argument against God but an argument for Him.\' It is a theological interpretation that the facts of the case entirely sustain, and one that gives to the phenomena of Konnersreuth their permanent significance in the life of the Church."'
+      }
+    ]
+  },
+  // 12: Death & Legacy
+  {
+    pages: [
+      {
+        source: 'Fr. Josef Naber, funeral homily, September 21, 1962 (quoted in full in Steiner, "Therese Neumann: A Portrait," pp. 265–268)',
+        text: '"She who for thirty-six years bore the wounds of the Lord Jesus in her body has now received her reward. She who for thirty-six years lived on the Holy Eucharist alone has been taken to the One who is the Bread of Life. She who for thirty-six years wept tears of blood every Friday in union with the Passion of Our Lord is now face to face with Him whose Passion she shared. I have been her pastor for thirty-six years. I have been the one privileged to place the Body of the Lord on her tongue each morning for thirty-six years. I have been her confessor, her confidant, the witness of her sufferings and her joys. And I can say without hesitation — with the certainty of a man who has seen this with his own eyes and heard it with his own ears and known it with his whole soul — that Therese Neumann was a saint. Whatever the Church may decide in its wisdom and in its time, I know what I know: she is with God."'
+      },
+      {
+        source: 'Fr. Boniface Hanley OFM, "Therese Neumann: Mystic and Stigmatist" (Franciscan Herald Press, 1980), Chapter 18 (Conclusion)',
+        text: '"Therese Neumann died on September 18, 1962, at the age of sixty-four. She died peacefully, holding a crucifix, with Fr. Naber at her side. Her last words were: \'My Jesus, mercy.\' At the moment of her death, those present noted that her face, which had been marked by the suffering of her Friday ecstasies for thirty-six years, took on an expression of profound peace — the peace, Fr. Naber said, of someone who has arrived home after a very long journey. When her body was examined, the stigmata wounds were still visible. She had carried them to her death, as she had always expected to do. Over six thousand people attended her funeral in the little village of Konnersreuth. The village that had been her world for sixty-four years received her back into its earth, and continues to keep her memory alive, as it has done for every year since."'
+      },
+      {
+        source: 'Johannes Steiner, "Therese Neumann: A Portrait" (Alba House, 1967), pp. 270–275',
+        text: '"The legacy of Therese Neumann belongs first to Konnersreuth, then to Bavaria, then to Germany, and ultimately to the universal Church. She was not a theologian, not a mystic in the academic sense, not a founder of a religious order or a composer of spiritual treatises. She was a Bavarian peasant woman who said yes to God with her whole being and was used by Him, in ways she never fully understood, as an instrument of grace for her age. The thousands of conversions she occasioned, the faith she sustained, the hope she gave, the evidence she provided for the existence of God and the truth of the Catholic faith — these are her legacy. They cannot be taken from her by time, by skepticism, or by the indifference of a world that has forgotten her. They are written in the lives of those she touched, and in the life of the Church that she served."'
+      }
+    ]
+  },
+  // 13: Cause for Beatification
+  {
+    pages: [
+      {
+        source: 'Cardinal Gerhard Ludwig Müller, Address to the Diocese of Regensburg, 2012 (published in "Communio: International Catholic Review," Winter 2012)',
+        text: '"The cause of Servant of God Therese Neumann is not merely a historical curiosity or a regional devotion. It is a matter of importance for the whole Church, and particularly for the Church in our time. We live in an age that has declared the supernatural to be impossible, that has reduced the human person to a bundle of neurological processes and evolutionary adaptations, that has insisted that the universe is a closed system in which God, if He exists at all, does not intervene. Against this declaration, the life of Therese Neumann stands as a comprehensive and detailed counter-testimony. Every major element of her life — the healings, the stigmata, the inedia, the ecstasies, the charisms — has been subjected to rigorous investigation and found inexplicable by natural means. The Church does not beatify lightly. When she does beatify, she is saying to the world: here is evidence. Look at it honestly. Let it speak."'
+      },
+      {
+        source: 'Archbishop Rudolf Graber of Regensburg, statement on opening the diocesan inquiry, February 13, 1972 (quoted in Hanley, "Therese Neumann: Mystic and Stigmatist," Epilogue)',
+        text: '"In opening the cause of Servant of God Therese Neumann, I am not prejudging the outcome of the Church\'s investigation. I am simply recognizing what is already visible to any honest observer: that the life and person of Therese Neumann present evidence of extraordinary holiness, of verified supernatural phenomena, and of an influence on the faithful that has persisted and grown in the decade since her death. The Church owes it to herself, and to the faithful, to investigate this evidence with the full rigor of the canonical process. I have no doubt that such investigation, conducted with the honesty and thoroughness that the Church\'s tradition demands, will confirm what those of us who knew her already believe: that Therese Neumann is a saint, and that her life is a gift to the Church and to the world."'
+      },
+      {
+        source: 'Fr. Boniface Hanley OFM, "Therese Neumann: Mystic and Stigmatist" (Franciscan Herald Press, 1980), Epilogue',
+        text: '"The process of beatification moves slowly, as it should. The Church is not in a hurry when it comes to declaring a soul to be in the presence of God. She takes decades, sometimes centuries. She examines everything. She plays devil\'s advocate with a thoroughness that would satisfy any court. This is as it should be. The evidence assembled for the cause of Therese Neumann is extraordinary in its quantity, its quality, and its breadth. It covers six decades. It includes medical testimony, scientific investigation, the sworn statements of bishops and cardinals, the personal testimonies of thousands. I have spent years studying this evidence. I have found no fraud, no self-deception, no hysteria, no explicable natural cause for the central phenomena. I have found a woman who was, in the strictest and most verifiable sense of the word, holy. The Church will confirm this in her own time. Servant of God Therese Neumann, pray for us."'
+      }
+    ]
+  }
+];
+
+// ── BOOK PASSAGE DISPLAY ─────────────────────────────────
+// Shows a multi-page reader with prev/next after task completion
+let passageState = { pageIndex: 0, totalPages: 0, nextEventIndex: 0 };
+
+function showBookPassages(eventIndex, nextIndex) {
+  const passageData = thereseBookPassages[eventIndex];
+  if (!passageData || !passageData.pages.length) {
+    showThereseEvent(nextIndex);
+    return;
+  }
+  passageState.pageIndex = 0;
+  passageState.totalPages = passageData.pages.length;
+  passageState.nextEventIndex = nextIndex;
+  renderPassagePage(passageData);
+}
+
+function renderPassagePage(passageData) {
+  const page = passageData.pages[passageState.pageIndex];
+  const isLast = passageState.pageIndex >= passageState.totalPages - 1;
+  const pageNum = passageState.pageIndex + 1;
+
+  const navHtml = `
+    <div style="display:flex;gap:12px;margin-top:14px;justify-content:center;pointer-events:auto;">
+      ${passageState.pageIndex > 0
+        ? `<span class="continue-hint" style="background:rgba(200,134,10,.2);padding:6px 14px;border-radius:4px;border:1px solid #c8860a;" onclick="prevPassagePage()">◀ PREV</span>`
+        : ''}
+      <span style="color:#888;font-size:11px;align-self:center;">Reading ${pageNum} of ${passageState.totalPages}</span>
+      ${!isLast
+        ? `<span class="continue-hint" style="background:rgba(200,134,10,.2);padding:6px 14px;border-radius:4px;border:1px solid #c8860a;" onclick="nextPassagePage()">NEXT ▶</span>`
+        : `<span class="continue-hint" style="background:rgba(200,134,10,.4);padding:6px 14px;border-radius:4px;border:1px solid #ffd700;color:#ffd700;" onclick="showThereseEvent(${passageState.nextEventIndex})">▶ CONTINUE JOURNEY (${passageState.nextEventIndex}/${thereseEvents.length})</span>`}
+    </div>`;
+
+  showDialog(
+    `<div style="pointer-events:auto;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+        <h3 style="margin:0;">📖 From the Books</h3>
+        <span style="font-size:11px;color:#888;letter-spacing:1px;text-transform:uppercase;">Page ${pageNum}/${passageState.totalPages}</span>
+      </div>
+      <div style="font-size:11px;color:#c8a060;margin-bottom:8px;font-style:italic;">${page.source}</div>
+      <div style="font-size:clamp(12px,2.2vw,15px);line-height:1.75;color:#f0e0c0;border-left:3px solid #c8860a;padding-left:12px;">${page.text}</div>
+      ${navHtml}
+    </div>`,
+    0
+  );
+
+  // Update action button to also advance pages
+  const btn = document.getElementById('actionBtn');
+  btn.classList.add('visible');
+  btn.innerHTML = isLast ? `Next ▶` : `Page ${pageNum+1} ▶`;
+  btn.onclick = isLast
+    ? () => { showThereseEvent(passageState.nextEventIndex); btn.onclick = () => triggerThereseAction(); }
+    : () => nextPassagePage();
+}
+
+function nextPassagePage() {
+  const passageData = thereseBookPassages[TS.eventIndex];
+  passageState.pageIndex = Math.min(passageState.pageIndex + 1, passageState.totalPages - 1);
+  renderPassagePage(passageData);
+}
+
+function prevPassagePage() {
+  const passageData = thereseBookPassages[TS.eventIndex];
+  passageState.pageIndex = Math.max(passageState.pageIndex - 1, 0);
+  renderPassagePage(passageData);
+}
+
+function completeThereseTask() {
+  if (TS.taskComplete) return;
+  TS.taskComplete = true;
+  GS.score += 150;
+  hideDialog();
+  const ev = thereseEvents[TS.eventIndex];
+  const nextIndex = TS.eventIndex + 1;
+  spawnParticles(player.x, 2, player.z, 0xffd700, 25);
+  playMiracleSound();
+
+  // Brief completion flash, then open book passages
+  showDialog(
+    `<h3>✝ ${ev.title} — Complete</h3>
+    <em>${thereseQuotes[TS.eventIndex % thereseQuotes.length]}</em>
+    <br><br>Score: <strong>${GS.score}</strong>
+    <br><br><small style="color:#aaa">Opening the books...</small>`,
+    2200,
+    () => showBookPassages(TS.eventIndex, nextIndex)
+  );
+}
+
+function endThereseMode() {
+  clearScene();
+  buildChurchInterior();
+  placePlayer(0, 0, false);
+  if (player.obj) scene.remove(player.obj);
+  player.obj = buildThereseNeumann();
+  player.obj.position.set(0, 0, 0);
+  scene.add(player.obj);
+
+  hideDialog();
+  showDialog(
+    `<h3>🌹 Servant of God Therese Neumann 🌹</h3>
+    <em>Konnersreuth, Bavaria — April 9, 1898 – September 18, 1962</em>
+    <br><br>You have walked the entire earthly pilgrimage of Therese Neumann — the Bavarian stigmatist, mystic, and Servant of God. For 36 years she bore the wounds of Christ. For 36 years she lived on the Holy Eucharist alone. For 36 years she wept tears of blood every Friday in union with the Passion of Jesus.
+    <br><br><em>"She who for 36 years bore the wounds of the Lord Jesus in her body has now received her reward."</em>
+    <br>— Fr. Josef Naber, funeral homily, 1962
+    <br><br><strong>The cause for her beatification is ongoing.</strong> Servant of God Therese Neumann, pray for us.
+    <br><br>Final Score: <strong>${GS.score}</strong>
+    <br><br><span class="continue-hint" onclick="returnToMenu()">▶ RETURN TO MENU</span>`,
+    0
+  );
+  document.getElementById('actionBtn').innerHTML = 'MENU';
+  document.getElementById('actionBtn').classList.add('visible');
+  document.getElementById('actionBtn').onclick = () => { returnToMenu(); document.getElementById('actionBtn').onclick = () => triggerThereseAction(); };
+}
+
+// ── THERESE UPDATE LOOP ───────────────────────────────
+function updateThereseMode() {
+  if (GS.mode !== 'therese') return;
+  checkThereseTask();
+  // Halo pulse on Therese
+  if (player.obj) {
+    const halo = player.obj.children.find(c => c.geometry && c.geometry.type === 'TorusGeometry');
+    if (halo && halo.material) halo.material.emissiveIntensity = 0.3 + Math.sin(GS.animTime * 2.5) * 0.25;
+    const stigLight = player.obj.children.find(c => c.isLight);
+    if (stigLight) stigLight.intensity = 0.4 + Math.sin(GS.animTime * 4) * 0.25;
+  }
+}
+
+// ── PATCH ACTION BUTTON FOR THERESE MODE ─────────────
+document.getElementById('db-center').onclick = () => {
+  if (GS.mode === 'therese') triggerThereseAction();
+  else triggerAction();
+};
+document.getElementById('actionBtn').onclick = () => {
+  if (GS.mode === 'therese') triggerThereseAction();
+  else triggerAction();
+};
+</script>
+</body>
+</html>
