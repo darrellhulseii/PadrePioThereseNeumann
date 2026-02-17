@@ -33,12 +33,16 @@
   #dialogInner{display:none;background:rgba(8,4,0,.93);border:2px solid #c8860a;border-radius:8px;
     padding:16px 20px;max-width:700px;margin:0 auto;font-family:'Crimson Text',serif;
     font-size:clamp(13px,2.5vw,16px);line-height:1.6;color:#f0e0c0;box-shadow:0 0 30px rgba(200,134,10,.3);
-    pointer-events:auto;}
+    pointer-events:auto;max-height:65vh;overflow-y:auto;}
   #dialogInner h3{font-family:'Cinzel',serif;color:#ffd700;font-size:clamp(13px,2.5vw,17px);margin-bottom:8px;}
   #dialogInner em{color:#aaddff;font-style:italic;}
   #dialogInner strong{color:#ffcc66;}
   .continue-hint{margin-top:10px;font-size:11px;color:#888;text-transform:uppercase;letter-spacing:2px;pointer-events:auto;cursor:pointer;}
   .continue-hint:active{color:#ffd700;}
+  .t-btn{display:inline-block;background:rgba(200,134,10,0.3);border:1.5px solid #c8860a;border-radius:4px;
+    padding:9px 22px;font-family:'Cinzel',serif;font-size:12px;letter-spacing:2px;color:#ffd980;
+    cursor:pointer;text-transform:uppercase;pointer-events:auto;margin-top:12px;}
+  .t-btn:active,.t-btn:hover{background:rgba(200,134,10,0.6);color:#ffd700;border-color:#ffd700;}
   #dpad{position:fixed;bottom:24px;left:24px;z-index:30;width:160px;height:160px;pointer-events:auto;}
   #dpad-ring{position:absolute;inset:0;border-radius:50%;background:rgba(0,0,0,.5);border:2px solid rgba(255,200,80,.3);}
   .dpad-btn{position:absolute;width:50px;height:50px;display:flex;align-items:center;justify-content:center;
@@ -759,16 +763,54 @@ function createSurvivor(x,z){
   return e;
 }
 
-function createSupply(x,z,type){
-  const colors=[0xff4444,0xffdd00,0x44dd44,0x44aaff];
-  const g=new THREE.Group();
-  const body=box(0.4,0.4,0.4,colors[type%4],0.3,0.5);
-  body.position.y=0.2; g.add(body);
-  const glow=new THREE.PointLight(colors[type%4],0.8,2);
-  glow.position.y=0.5; g.add(glow);
+function createCommunionItem(x,z,type){
+  // type 0 = communion bread (host), type 1 = communion wine (chalice)
+  const g = new THREE.Group();
+
+  if(type % 2 === 0){
+    // ── COMMUNION HOST (round disc of bread) ──
+    // Gold disc
+    const hostGeo = new THREE.CylinderGeometry(0.28,0.28,0.06,16);
+    const hostMat = new THREE.MeshStandardMaterial({color:0xf5e6c8,metalness:0.1,roughness:0.8,emissive:0xffeebb,emissiveIntensity:0.25});
+    const host = new THREE.Mesh(hostGeo,hostMat);
+    host.position.y = 0.3; g.add(host);
+    // Cross etched on top
+    const cv = box(0.04,0.02,0.24,0xd4b870,0.3,0.5); cv.position.set(0,0.34,0); g.add(cv);
+    const ch = box(0.24,0.02,0.04,0xd4b870,0.3,0.5); ch.position.set(0,0.34,0); g.add(ch);
+    // Golden glow ring underneath
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.3,0.03,6,20),
+      new THREE.MeshStandardMaterial({color:0xffd700,emissive:0xffd700,emissiveIntensity:0.9,metalness:0.8}));
+    ring.rotation.x = Math.PI/2; ring.position.y = 0.18; g.add(ring);
+    // White light
+    const light = new THREE.PointLight(0xffffff,1.6,3);
+    light.position.y = 0.5; g.add(light);
+    g.userData.itemType = 'host';
+  } else {
+    // ── COMMUNION CHALICE (wine goblet) ──
+    // Base
+    const base = cylinder(0.22,0.26,0.08,0xffd700); base.position.y = 0.04; g.add(base);
+    base.material = new THREE.MeshStandardMaterial({color:0xffd700,metalness:0.9,roughness:0.1,emissive:0xffd700,emissiveIntensity:0.15});
+    // Stem
+    const stem = cylinder(0.06,0.06,0.32,0xffd700); stem.position.y = 0.24;
+    stem.material = new THREE.MeshStandardMaterial({color:0xffd700,metalness:0.9,roughness:0.1});
+    g.add(stem);
+    // Cup (tapered cylinder)
+    const cup = cylinder(0.22,0.15,0.28,0xffd700); cup.position.y = 0.54;
+    cup.material = new THREE.MeshStandardMaterial({color:0xffd700,metalness:0.9,roughness:0.1});
+    g.add(cup);
+    // Wine inside (dark red disc)
+    const wine = new THREE.Mesh(new THREE.CylinderGeometry(0.19,0.19,0.06,12),
+      new THREE.MeshStandardMaterial({color:0x8b0000,roughness:0.4,emissive:0x440000,emissiveIntensity:0.3,transparent:true,opacity:0.9}));
+    wine.position.y = 0.65; g.add(wine);
+    // Red glow
+    const light = new THREE.PointLight(0xff2200,1.0,3);
+    light.position.y = 0.7; g.add(light);
+    g.userData.itemType = 'chalice';
+  }
+
   g.position.set(x,0,z);
   scene.add(g);
-  const e={obj:g,x,z,collected:false,type:'supply',rotTimer:0};
+  const e={obj:g,x,z,collected:false,type:'supply',rotTimer:0,itemType:type%2===0?'host':'chalice'};
   entities.push(e);
   return e;
 }
@@ -831,14 +873,17 @@ function spawnForStage(){
   if(GS.subMode==='rescue'||GS.subMode==='transport'){
     for(let i=0;i<15;i++){
       const a=Math.random()*Math.PI*2;
-      const r=6+Math.random()*(cfg.boundSize*0.6);
+      // Cap spawn radius so survivors always start within the player's hard boundary (25)
+      const maxR=Math.min(cfg.boundSize*0.5, 20);
+      const r=5+Math.random()*maxR;
       createSurvivor(Math.cos(a)*r,Math.sin(a)*r);
     }
   } else if(GS.subMode==='shelter'){
+    // Alternating communion bread (host) and wine (chalice)
     for(let i=0;i<cfg.supplyCount;i++){
       const a=Math.random()*Math.PI*2;
       const r=4+Math.random()*12;
-      createSupply(Math.cos(a)*r,Math.sin(a)*r,i);
+      createCommunionItem(Math.cos(a)*r,Math.sin(a)*r,i); // even=host, odd=chalice
     }
   } else if(GS.subMode==='flight'){
     for(let i=0;i<7;i++)createPlane((Math.random()-0.5)*60,i*8-28);
@@ -964,7 +1009,7 @@ function initRescueStage(){
   updateHUD();
   showStageTitle(`🇮🇹 Stage ${GS.stage}: ${stageCities[GS.stage-1]}`);
   const cfg=stageConfig(GS.stage);
-  showDialog(`<h3>Stage ${GS.stage} — ${stageCities[GS.stage-1]}</h3>Rescue 15 people! They'll try to run.<br><small>Difficulty: flee speed ${(cfg.survivorSpeed*1000).toFixed(0)}/1000, detection radius ${cfg.fleeRadius.toFixed(1)}</small>`,3500);
+  showDialog(`<h3>Stage ${GS.stage} — ${stageCities[GS.stage-1]}</h3>Rescue 15 people! They will try to run from you.<br><small style="color:#aaa">Stage difficulty increases each level — survivors flee faster and notice you from farther away.</small><br><br><div style="margin-top:10px;pointer-events:auto;text-align:center;"><span style="display:inline-block;background:rgba(200,134,10,0.3);border:1.5px solid #c8860a;border-radius:4px;padding:8px 22px;font-family:'Cinzel',serif;font-size:12px;letter-spacing:2px;color:#ffd980;cursor:pointer;" onclick="hideDialog()">▶ GO</span></div>`,0);
 }
 
 function initTransportStage(){
@@ -976,7 +1021,7 @@ function initTransportStage(){
   document.getElementById('actionBtn').classList.remove('visible');
   updateHUD();
   showStageTitle(`🚂 Stage ${GS.stage}: ${stageCities[GS.stage-1]}`);
-  showDialog(`<h3>Stage ${GS.stage} — ${stageCities[GS.stage-1]}</h3>Guide 15 people to the train platform!`,3000);
+  showDialog(`<h3>Stage ${GS.stage} — ${stageCities[GS.stage-1]}</h3>Guide 15 people to the train platform!<br>Walk near them and they will follow you toward the train.<br><br><div style="margin-top:10px;pointer-events:auto;text-align:center;"><span style="display:inline-block;background:rgba(200,134,10,0.3);border:1.5px solid #c8860a;border-radius:4px;padding:8px 22px;font-family:'Cinzel',serif;font-size:12px;letter-spacing:2px;color:#ffd980;cursor:pointer;" onclick="hideDialog()">▶ GO</span></div>`,0);
 }
 
 function initShelterStage(){
@@ -987,8 +1032,8 @@ function initShelterStage(){
   spawnForStage();
   document.getElementById('actionBtn').classList.remove('visible');
   updateHUD();
-  showStageTitle(`🏠 Stage ${GS.stage}: ${stageCities[GS.stage-1]}`);
-  showDialog(`<h3>Stage ${GS.stage} — ${stageCities[GS.stage-1]}</h3>Collect all the supply crates scattered through the shelter blocks!`,3000);
+  showStageTitle(`🍞 Stage ${GS.stage}: ${stageCities[GS.stage-1]}`);
+  showDialog(`<h3>Stage ${GS.stage} — ${stageCities[GS.stage-1]}</h3>Gather the <strong>Communion Bread</strong> and <strong>Communion Wine</strong> scattered through the shelter.<br>Bring them together to nourish the faithful!<br><br><div style="margin-top:10px;pointer-events:auto;text-align:center;"><span style="display:inline-block;background:rgba(200,134,10,0.3);border:1.5px solid #c8860a;border-radius:4px;padding:8px 22px;font-family:'Cinzel',serif;font-size:12px;letter-spacing:2px;color:#ffd980;cursor:pointer;" onclick="hideDialog()">▶ GO</span></div>`,0);
 }
 
 // ── CONFESSION ───────────────────────────────────────────
@@ -1030,7 +1075,7 @@ function initConfessionMode(){
   document.getElementById('hStage').textContent='Padre Pio';
   updateHUD();
   showStageTitle('🕊 Confession Booth');
-  showDialog('<h3>Sit in the confessional, Padre Pio.</h3>Penitents will come to you every 10 seconds.<br>Listen and offer God\'s forgiveness to each soul.',5000);
+  showDialog('<h3>Sit in the confessional, Padre Pio.</h3>Penitents will come to you every 10 seconds.<br>Listen and offer God\'s forgiveness to each soul.<br><br><span class="t-btn" onclick="hideDialog()">✝ I am ready</span>',0);
 }
 
 function triggerNextConfession(){
@@ -1045,19 +1090,14 @@ function triggerNextConfession(){
     t+=0.04;penitent.position.z=-6+t*4;penitent.position.x=-4;
     if(t>=1){
       clearInterval(walk);scene.remove(penitent);
-      showDialog(`<h3>Penitent #${GS.confessionCount+1}:</h3><em>"${confessionTexts[i]}"</em><br><br><strong>Padre Pio:</strong> "${padrePioResponses[i]}"`,5500,()=>{
-        GS.confessionCount++;GS.score+=50;
-        spawnParticles(-4,3,0,0xffd700,8);
-        confessionBusy=false;updateHUD();
-        if(GS.confessionCount>=10)confessionComplete();
-      });
+      showDialog(`<h3>Penitent #${GS.confessionCount+1}:</h3><em>"${confessionTexts[i]}"</em><br><br><strong>Padre Pio:</strong> "${padrePioResponses[i]}"<br><br><span class="t-btn" onclick="(function(){GS.confessionCount++;GS.score+=50;spawnParticles(-4,3,0,0xffd700,8);confessionBusy=false;updateHUD();hideDialog();if(GS.confessionCount>=10)confessionComplete();})()">✝ Grant Absolution</span>`,0);
     }
   },40);
 }
 
 function confessionComplete(){
   const d=ppPrayers.confessionComplete;
-  showDialog(`<h3>All confessions heard!</h3><em>${d.quote}</em><br><br>${d.prayer}`,8000,()=>initFlightMode());
+  showDialog(`<h3>All confessions heard!</h3><em>${d.quote}</em><br><br>${d.prayer}<br><br><span class="t-btn" onclick="hideDialog();initFlightMode()">✝ Continue to Flight ▶</span>`,0);
 }
 
 // ── FLIGHT ────────────────────────────────────────────────
@@ -1071,7 +1111,7 @@ function initFlightMode(){
   document.getElementById('actionBtn').classList.remove('visible');
   updateHUD();
   showStageTitle('✈ Soaring Over Italy');
-  showDialog(`<h3>${ppQuotes[6]}</h3><br>Tap a plane to redirect it away from Italy! Redirect all 7 planes.`,5000);
+  showDialog(`<h3>${ppQuotes[6]}</h3><br>Tap a plane to redirect it away from Italy! Redirect all 7 planes.<br><br><span class="t-btn" onclick="hideDialog()">▶ Begin</span>`,0);
 }
 
 const raycaster=new THREE.Raycaster();
@@ -1101,7 +1141,7 @@ function checkPlaneTap(cx,cy){
 
 function flightComplete(){
   const d=ppPrayers.planesComplete;
-  showDialog(`<h3>✈ All planes redirected!</h3><em>${d.quote}</em><br><br>${d.prayer}`,8000,()=>initHealingMode());
+  showDialog(`<h3>✈ All planes redirected!</h3><em>${d.quote}</em><br><br>${d.prayer}<br><br><span class="t-btn" onclick="hideDialog();initHealingMode()">✝ Continue to Healing ▶</span>`,0);
 }
 
 // ── HEALING ───────────────────────────────────────────────
@@ -1117,7 +1157,7 @@ function initHealingMode(){
   document.getElementById('actionBtn').textContent='🙏 PRAY';
   updateHUD();
   showStageTitle('✝ The Healing Ministry');
-  showDialog(`<h3>${ppQuotes[3]}</h3><br>Walk near the sick and press PRAY / SPACE to heal through prayer.`,5000);
+  showDialog(`<h3>${ppQuotes[3]}</h3><br>Walk near the sick and press PRAY / SPACE to heal through prayer.<br><br><span class="t-btn" onclick="hideDialog()">▶ Begin Healing</span>`,0);
 }
 
 function tryHeal(){
@@ -1140,7 +1180,7 @@ function tryHeal(){
 
 function healingComplete(){
   const d=ppPrayers.healingComplete;
-  showDialog(`<h3>✝ All healed by prayer!</h3><em>${d.quote}</em><br><br>${d.prayer}`,10000,()=>initBioMode());
+  showDialog(`<h3>✝ All healed by prayer!</h3><em>${d.quote}</em><br><br>${d.prayer}<br><br><span class="t-btn" onclick="hideDialog();initBioMode()">✝ Continue to Padre Pio's Life ▶</span>`,0);
 }
 
 // ── BIOGRAPHY ─────────────────────────────────────────────
@@ -1167,7 +1207,7 @@ function advanceBio(){GS.bioIndex++;showBioEvent(GS.bioIndex);}
 
 function endGame(){
   hideDialog();
-  showDialog(`<h3>🕊 Padre Pio's Legacy Lives On 🕊</h3><br>You have walked the path of Saint Pio of Pietrelcina — priest, mystic, stigmatist, healer, and beloved son of Italy.<br><br><em>"I belong entirely to everyone. Everyone can say: Padre Pio is mine."</em><br><br><strong>— Saint Pio of Pietrelcina (1887–1968)</strong><br><br>Final Score: <strong>${GS.score}</strong>`,0);
+  showDialog(`<h3>🕊 Padre Pio's Legacy Lives On 🕊</h3><br>You have walked the path of Saint Pio of Pietrelcina — priest, mystic, stigmatist, healer, and beloved son of Italy.<br><br><em>"I belong entirely to everyone. Everyone can say: Padre Pio is mine."</em><br><br><strong>— Saint Pio of Pietrelcina (1887–1968)</strong><br><br>Final Score: <strong>${GS.score}</strong><br><br><span class="t-btn" style="border-color:#ffd700;color:#ffd700;" onclick="hideDialog();returnToMenu()">▶ Return to Menu</span>`,0);
   document.getElementById('actionBtn').innerHTML='MENU';
   document.getElementById('actionBtn').classList.add('visible');
   document.getElementById('actionBtn').onclick=()=>{
@@ -1182,9 +1222,9 @@ function stageComplete(){
   spawnParticles(player.x,2,player.z,0xffd700,30);
   if(GS.stage<9){
     GS.stage++;
-    showDialog(`<h3>✅ Stage ${GS.stage-1} Complete!</h3>Giuseppe travels to <strong>${stageCities[GS.stage-1]}</strong>...`,2500,()=>initStageByNumber(GS.stage));
+    showDialog(`<h3>✅ Stage ${GS.stage-1} Complete!</h3>Giuseppe travels to <strong>${stageCities[GS.stage-1]}</strong>...<br><br><span class="t-btn" onclick="hideDialog();initStageByNumber(${GS.stage})">▶ Continue to ${stageCities[GS.stage-1]}</span>`,0);
   } else {
-    showDialog(`<h3>🇮🇹 All 9 Stages Complete!</h3>Giuseppe has helped all of Italy!<br>Now seek confession with <strong>Padre Pio</strong>...`,3000,()=>showConfessionSequence());
+    showDialog(`<h3>🇮🇹 All 9 Stages Complete!</h3>Giuseppe has helped all of Italy!<br>Now seek confession with <strong>Padre Pio</strong>...<br><br><span class="t-btn" onclick="hideDialog();showConfessionSequence()">▶ Seek Padre Pio</span>`,0);
   }
 }
 
@@ -1199,13 +1239,38 @@ function showConfessionSequence(){
   ];
   let i=0;
   function next(){
-    showDialog(seq[i],2500,()=>{i++;if(i<seq.length)next();else{
-      GS.padrePioUnlocked=true;
-      document.getElementById('btnPadre').disabled=false;
-      document.getElementById('btnPadre').textContent='🕊 Padre Pio Mode (UNLOCKED)';
-      returnToMenu();
-    }});
+    const isLast=(i===seq.length-1);
+    const btnHtml = isLast
+      ? `<br><br><span class="t-btn" style="border-color:#ffd700;color:#ffd700;" onclick="GS.padrePioUnlocked=true;document.getElementById('btnPadre').disabled=false;document.getElementById('btnPadre').textContent='🕊 Padre Pio Mode (UNLOCKED)';hideDialog();returnToMenu()">🕊 Return to Menu</span>`
+      : `<br><br><span class="t-btn" onclick="seqNext_${i}()">▶ Continue</span>`;
+    window[`seqNext_${i}`]=()=>{i++;next();};
+    showDialog(seq[i]+btnHtml,0);
   }next();
+}
+
+// ── ISAIAH CALL — shown before every mode's first stage ─
+const ISAIAH_HTML = `
+  <div style="text-align:center;padding:4px 0;">
+    <div style="font-size:22px;margin-bottom:10px;color:#ffd700;">✝</div>
+    <h3 style="font-size:clamp(14px,3vw,19px);letter-spacing:1px;margin-bottom:12px;">Isaiah 6:8</h3>
+    <div style="font-size:clamp(14px,2.8vw,17px);line-height:1.9;color:#f0e0c0;font-style:italic;border-left:3px solid #c8860a;padding-left:14px;text-align:left;">
+      "Also I heard the voice of the Lord, saying:<br>
+      <strong style="color:#ffd700;">'Whom shall I send,<br>
+      And who will go for Us?'</strong><br>
+      Then I said, <strong style="color:#ffd700;">'Here am I! Send me.'"</strong>
+    </div>
+    <div style="margin-top:14px;">
+      <span class="continue-hint" style="background:rgba(200,134,10,.25);padding:8px 20px;border-radius:4px;border:1px solid #c8860a;font-size:12px;pointer-events:auto;cursor:pointer;" id="isaiahContinueBtn">▶ ANSWER THE CALL</span>
+    </div>
+  </div>`;
+
+function showIsaiahCall(onContinue) {
+  showDialog(ISAIAH_HTML, 0);
+  // Wire the button (set after dialog renders)
+  setTimeout(() => {
+    const btn = document.getElementById('isaiahContinueBtn');
+    if (btn) btn.onclick = () => { hideDialog(); onContinue(); };
+  }, 50);
 }
 
 // ── MENU ─────────────────────────────────────────────────
@@ -1213,8 +1278,7 @@ function startStoryMode(){
   document.getElementById('menu').style.display='none';
   GS.mode='game';GS.stage=1;GS.score=0;GS.rescued=0;GS.collected=0;
   startItalianMusic();
-  showDialog('<h3>🇮🇹 Giuseppe\'s Journey Begins</h3>Travel through Italy helping communities in need!',3000);
-  initRescueStage();
+  showIsaiahCall(() => initRescueStage());
 }
 
 function startPadrePioMode(){
@@ -1224,7 +1288,7 @@ function startPadrePioMode(){
   confessionIdx=0;confessionBusy=false;
   document.getElementById('hStage').textContent='Padre Pio';
   startItalianMusic();
-  initConfessionMode();
+  showIsaiahCall(() => initConfessionMode());
 }
 
 function returnToMenu(){
@@ -1264,8 +1328,14 @@ function updateRescue(){
       }
       e.vx*=0.88;e.vz*=0.88;
 
-      e.obj.position.x=Math.max(-cfg.boundSize,Math.min(cfg.boundSize,e.obj.position.x+e.vx));
-      e.obj.position.z=Math.max(-cfg.boundSize,Math.min(cfg.boundSize,e.obj.position.z+e.vz));
+      // Survivors share the SAME hard bound as the player (25) — cannot escape playable area
+      // Bounce velocity when hitting the wall so they don't pile up on edges
+      const nx = e.obj.position.x + e.vx;
+      const nz = e.obj.position.z + e.vz;
+      if(nx > 25 || nx < -25) e.vx *= -0.5;
+      if(nz > 25 || nz < -25) e.vz *= -0.5;
+      e.obj.position.x=Math.max(-25,Math.min(25,e.obj.position.x+e.vx));
+      e.obj.position.z=Math.max(-25,Math.min(25,e.obj.position.z+e.vz));
       e.obj.position.y=Math.abs(Math.sin(GS.animTime*10))*0.1;
       if(Math.abs(e.vx)+Math.abs(e.vz)>0.001)
         e.obj.rotation.y=Math.atan2(e.vx,e.vz);
@@ -1296,7 +1366,13 @@ function updateTransport(){
       const dist=Math.sqrt(dx*dx+dz*dz);
       if(dist<5){e.vx-=dx*0.01;e.vz-=dz*0.01;}
       e.vx*=0.88;e.vz*=0.88;
-      e.obj.position.x+=e.vx;e.obj.position.z+=e.vz;
+      // Survivors share the SAME hard bound as the player (25) — cannot escape playable area
+      const tnx = e.obj.position.x + e.vx;
+      const tnz = e.obj.position.z + e.vz;
+      if(tnx > 25 || tnx < -25) e.vx *= -0.5;
+      if(tnz > 25 || tnz < -25) e.vz *= -0.5;
+      e.obj.position.x=Math.max(-25,Math.min(25,e.obj.position.x+e.vx));
+      e.obj.position.z=Math.max(-25,Math.min(25,e.obj.position.z+e.vz));
       e.obj.position.y=Math.abs(Math.sin(GS.animTime*10))*0.08;
       e.x=e.obj.position.x;e.z=e.obj.position.z;
       const distTrain=Math.abs(e.obj.position.x-trainX);
@@ -1754,25 +1830,108 @@ function buildVillageScene() {
   const cCross2 = box(1.0, 0.2, 0.2, 0xffd700, 0.9, 0.1); cCross2.position.set(0, 14.5, -20); addToScene(cCross2);
 }
 
+// ── COMMUNION BREAD & WINE COLLECTIBLES ───────────────
+function createCommunionHost(x, z) {
+  const g = new THREE.Group();
+  // Host — flat white disc with cross scoring
+  const disc = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.28, 0.28, 0.06, 16),
+    new THREE.MeshStandardMaterial({color:0xfff8ee, emissive:0xffd700, emissiveIntensity:0.45, metalness:0.1, roughness:0.6})
+  );
+  disc.position.y = 0.55; g.add(disc);
+  // Cross engraving lines on top
+  const cr1 = box(0.04, 0.01, 0.44, 0xeecc88, 0, 0.8); cr1.position.set(0, 0.59, 0); g.add(cr1);
+  const cr2 = box(0.44, 0.01, 0.04, 0xeecc88, 0, 0.8); cr2.position.set(0, 0.59, 0); g.add(cr2);
+  // Golden glow
+  const light = new THREE.PointLight(0xffd700, 1.8, 3.5);
+  light.position.y = 0.8; g.add(light);
+  // Floating particles ring
+  for (let i = 0; i < 6; i++) {
+    const spark = sphere(0.04, 0xffd700);
+    spark.material = new THREE.MeshStandardMaterial({color:0xffd700,emissive:0xffd700,emissiveIntensity:1});
+    const ang = (i/6)*Math.PI*2;
+    spark.position.set(Math.cos(ang)*0.4, 0.7, Math.sin(ang)*0.4);
+    spark.userData.orbAngle = ang;
+    g.add(spark);
+  }
+  g.position.set(x, 0, z);
+  scene.add(g);
+  return g;
+}
+
+function createCommunionWine(x, z) {
+  const g = new THREE.Group();
+  // Chalice base
+  const base = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.25, 0.30, 0.08, 12),
+    new THREE.MeshStandardMaterial({color:0xd4a017, metalness:0.9, roughness:0.1})
+  );
+  base.position.y = 0.04; g.add(base);
+  // Stem
+  const stem = cylinder(0.05, 0.05, 0.4, 0xd4a017);
+  stem.material = new THREE.MeshStandardMaterial({color:0xd4a017, metalness:0.9, roughness:0.1});
+  stem.position.y = 0.24; g.add(stem);
+  // Node on stem
+  const node = sphere(0.1, 0xd4a017);
+  node.material = new THREE.MeshStandardMaterial({color:0xd4a017, metalness:0.9, roughness:0.1});
+  node.position.y = 0.28; g.add(node);
+  // Cup bowl
+  const cup = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.22, 0.12, 0.35, 12),
+    new THREE.MeshStandardMaterial({color:0xd4a017, metalness:0.9, roughness:0.1})
+  );
+  cup.position.y = 0.615; g.add(cup);
+  // Wine inside (dark red disc)
+  const wine = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.19, 0.19, 0.04, 12),
+    new THREE.MeshStandardMaterial({color:0x7a0000, emissive:0x440000, emissiveIntensity:0.4, metalness:0, roughness:0.5})
+  );
+  wine.position.y = 0.79; g.add(wine);
+  // Deep red glow
+  const light = new THREE.PointLight(0xff2200, 1.2, 3);
+  light.position.y = 1.0; g.add(light);
+  // Gold rim light
+  const rimLight = new THREE.PointLight(0xffd700, 0.8, 2);
+  rimLight.position.y = 0.8; g.add(rimLight);
+  g.position.set(x, 0, z);
+  scene.add(g);
+  return g;
+}
+
 // ── COLLECTIBLE LIGHTS (MIRACLES / RELICS / CANDLES) ──
-function spawnCollectibles(count, color, label) {
+function spawnCollectibles(count, color, label, isCommunion) {
   TS.collectCount = 0;
   TS.collectTarget = count;
   entities.forEach(e => { if (e.obj) scene.remove(e.obj); });
   entities = [];
   for (let i = 0; i < count; i++) {
     const angle = (i / count) * Math.PI * 2;
-    const r = 4 + Math.random() * 6;
+    const r = 3.5 + Math.random() * 5;
     const x = Math.cos(angle) * r, z = Math.sin(angle) * r;
-    const g = new THREE.Group();
-    const orb = sphere(0.22, color);
-    orb.material = new THREE.MeshStandardMaterial({color, emissive: color, emissiveIntensity: 0.8});
-    orb.position.y = 0.5; g.add(orb);
-    const light = new THREE.PointLight(color, 1.2, 3);
-    light.position.y = 0.5; g.add(light);
-    g.position.set(x, 0, z);
-    scene.add(g);
-    entities.push({obj: g, collected: false, type: 'collectible', rotTimer: 0});
+    let objGroup;
+    let itemType = 'collectible';
+    if (isCommunion) {
+      // Alternate: host for even indices, chalice for odd
+      if (i % 2 === 0) {
+        objGroup = createCommunionHost(x, z);
+        itemType = 'host';
+      } else {
+        objGroup = createCommunionWine(x, z);
+        itemType = 'chalice';
+      }
+    } else {
+      // Generic glowing orb
+      const g = new THREE.Group();
+      const orb = sphere(0.22, color);
+      orb.material = new THREE.MeshStandardMaterial({color, emissive: color, emissiveIntensity: 0.8});
+      orb.position.y = 0.5; g.add(orb);
+      const light = new THREE.PointLight(color, 1.2, 3);
+      light.position.y = 0.5; g.add(light);
+      g.position.set(x, 0, z);
+      scene.add(g);
+      objGroup = g;
+    }
+    entities.push({obj: objGroup, collected: false, type: itemType, rotTimer: 0});
   }
 }
 
@@ -1850,7 +2009,7 @@ function triggerEcstasy() {
   const ecstasyLight = new THREE.PointLight(0xff2200, 3, 5);
   if (player.obj) player.obj.add(ecstasyLight);
   playEcstasySound();
-  showDialog(`<h3>✝ The Friday Ecstasy</h3><em>"She became pale as death. Her eyes closed. Then her face transformed — she was no longer in this world. The wounds opened and bled. All present fell to their knees."</em><br><br>— Msgr. Josef Reetz OSB, eyewitness account, 1948`, 5000, () => {
+  showDialog(`<h3>✝ The Friday Ecstasy</h3><em>"She became pale as death. Her eyes closed. Then her face transformed — she was no longer in this world. The wounds opened and bled. All present fell to their knees."</em><br><br>— Msgr. Josef Reetz OSB, eyewitness account, 1948<br><br><span class="t-btn" onclick="hideDialog()">✝ Witness ✝</span>`, 0, () => {
     ecstasyActive = false;
     if (player.obj) { const l = player.obj.children.find(c=>c.isLight); if(l)player.obj.remove(l); }
   });
@@ -1908,7 +2067,7 @@ function startThereseMode() {
   GS.score = 0;
   TS.eventIndex = 0;
   startItalianMusic();
-  showThereseEvent(0);
+  showIsaiahCall(() => showThereseEvent(0));
 }
 
 function showThereseEvent(index) {
@@ -1946,10 +2105,11 @@ function showThereseEvent(index) {
 
   // Set up task
   if (ev.interactive === 'collect') {
-    const count = ev.year === '1926–1962' ? 1 : (ev.year === '1945' ? 7 : (ev.year === '1929' ? 3 : 5));
-    spawnCollectibles(count, 0xffd700, ev.title);
+    const count = ev.year === '1945' ? 7 : (ev.year === '1929' ? 3 : 5);
+    spawnCollectibles(count, 0xffd700, ev.title, false);
   } else if (ev.interactive === 'pray' && ev.year === '1926–1962') {
-    spawnCollectibles(1, 0xffeebb, 'Holy Host');
+    // Inedia stage — communion bread (hosts) AND wine (chalices), 2 of each
+    spawnCollectibles(4, 0xffd700, 'Communion', true); // indices 0,2 = hosts; 1,3 = chalices
   } else if (ev.interactive === 'navigate') {
     spawnShadows();
   } else if (ev.interactive === 'discern') {
@@ -1959,11 +2119,18 @@ function showThereseEvent(index) {
   }
 
   document.getElementById('hStage').textContent = `${index+1}/${thereseEvents.length}`;
-  document.getElementById('hGoal').textContent = ev.title;
+  // Special label for communion stage
+  if (ev.interactive === 'pray' && ev.year === '1926–1962') {
+    document.getElementById('hGoal').textContent = 'Collect Bread & Wine (0/4)';
+  } else {
+    document.getElementById('hGoal').textContent = ev.title;
+  }
   document.getElementById('progressBar').style.width = ((index / thereseEvents.length) * 100) + '%';
 
   const actionBtn = document.getElementById('actionBtn');
-  const needsAction = ev.interactive === 'pray' || ev.interactive === 'wait' || ev.interactive === 'final';
+  // Inedia stage (1926-1962) uses communion collecting — no action button needed
+  const isInedia = ev.interactive === 'pray' && ev.year === '1926–1962';
+  const needsAction = !isInedia && (ev.interactive === 'pray' || ev.interactive === 'wait' || ev.interactive === 'final');
   if (needsAction) {
     actionBtn.classList.add('visible');
     actionBtn.textContent = ev.interactive === 'wait' ? 'WAIT' : '🙏 PRAY';
@@ -1972,8 +2139,21 @@ function showThereseEvent(index) {
   }
 
   showStageTitle(`${ev.year}: ${ev.title}`);
+
+  // Isaiah 6:8 header appears on every Therese chapter opening
+  const isaiahBanner = `<div style="border-left:3px solid #ffd700;padding:8px 12px;margin-bottom:12px;background:rgba(255,215,0,0.07);pointer-events:none;">
+    <span style="font-size:11px;text-transform:uppercase;letter-spacing:2px;color:#c8a060;display:block;margin-bottom:4px;">Isaiah 6:8</span>
+    <em style="color:#ffeebb;font-size:clamp(12px,2.2vw,15px);line-height:1.6;">"Also I heard the voice of the Lord, saying:<br>'Whom shall I send, and who will go for Us?'<br>Then I said, 'Here am I! Send me.'"</em>
+  </div>`;
+
+  // Every dialog has a clickable CONTINUE button — no auto-dismiss
+  const taskNote = `<div style="margin-top:10px;font-size:11px;color:#aaa;border-top:1px solid rgba(255,200,80,0.2);padding-top:8px;">📋 ${ev.task}</div>`;
+  const continueBtn = `<div style="margin-top:12px;pointer-events:auto;text-align:center;">
+    <span class="t-btn" onclick="hideDialog()">✝ Begin ✝</span>
+  </div>`;
+
   showDialog(
-    `<h3>${ev.year} — ${ev.title}</h3><em>${ev.chapter}</em><br><br>${ev.desc}<br><br><strong>${ev.quote}</strong><br><br><small style="color:#aaa">Task: ${ev.task}</small>`,
+    `${isaiahBanner}<h3>${ev.year} — ${ev.title}</h3><em style="color:#c8a060;font-size:11px;letter-spacing:1px;">${ev.chapter}</em><br><br>${ev.desc}<br><br><strong style="color:#ffd700;">${ev.quote}</strong>${taskNote}${continueBtn}`,
     0
   );
 }
@@ -1994,18 +2174,37 @@ function checkThereseTask() {
     }
   } else if (ev.interactive === 'collect' || (ev.interactive === 'pray' && ev.year === '1926–1962')) {
     entities.forEach(e => {
-      if ((e.type === 'collectible') && !e.collected) {
+      if ((e.type === 'collectible' || e.type === 'host' || e.type === 'chalice') && !e.collected) {
         const dx = e.obj.position.x - player.x;
         const dz = e.obj.position.z - player.z;
         if (Math.sqrt(dx*dx + dz*dz) < 1.6) {
           e.collected = true;
           const pos = e.obj.position.clone();
           scene.remove(e.obj);
-          spawnParticles(pos.x, 1, pos.z, 0xffd700, 18);
+          const particleColor = e.type === 'chalice' ? 0xff4444 : 0xffd700;
+          spawnParticles(pos.x, 1, pos.z, particleColor, 18);
           playMiracleSound();
           TS.collectCount++;
-          document.getElementById('hGoal').textContent = `${ev.title}: ${TS.collectCount}/${TS.collectTarget}`;
+          if (ev.year === '1926–1962') {
+            const bread = entities.filter(e2 => e2.type === 'host' && e2.collected).length;
+            const wine = entities.filter(e2 => e2.type === 'chalice' && e2.collected).length;
+            document.getElementById('hGoal').textContent = `Bread: ${bread} Wine: ${wine} (${TS.collectCount}/4)`;
+          } else {
+            document.getElementById('hGoal').textContent = `${ev.title}: ${TS.collectCount}/${TS.collectTarget}`;
+          }
           if (TS.collectCount >= TS.collectTarget) completeThereseTask();
+        }
+        // Animate orbiting sparks on host
+        if (e.type === 'host') {
+          e.rotTimer = (e.rotTimer||0) + 0.04;
+          e.obj.children.forEach(c => {
+            if (c.userData && c.userData.orbAngle !== undefined) {
+              c.userData.orbAngle += 0.06;
+              c.position.x = Math.cos(c.userData.orbAngle) * 0.4;
+              c.position.z = Math.sin(c.userData.orbAngle) * 0.4;
+              c.position.y = 0.7 + Math.sin(c.userData.orbAngle * 2) * 0.08;
+            }
+          });
         }
       }
     });
@@ -2040,7 +2239,7 @@ function checkThereseTask() {
             playMiracleSound();
             completeThereseTask();
           } else {
-            showDialog('<h3>Not the holy relic...</h3>Use Therese\'s spiritual gift — seek the one that truly glows.', 2000);
+            showDialog('<h3>Not the holy relic...</h3>Use Therese\'s spiritual gift — seek the one that truly glows.<br><br><span class="t-btn" onclick="hideDialog()">Try Again</span>', 0);
           }
         }
       }
@@ -2067,12 +2266,24 @@ function checkThereseTask() {
     // handled by triggerThereseAction
   }
 
-  // Rotate collectibles
+  // Rotate collectibles and relics
   entities.forEach(e => {
     if (e.type === 'collectible' || e.type === 'relic') {
       e.rotTimer = (e.rotTimer||0) + 0.04;
       e.obj.rotation.y = e.rotTimer;
       e.obj.position.y = Math.sin(e.rotTimer) * 0.12 + 0.4;
+    }
+    // Chalice bob gently
+    if (e.type === 'chalice' && !e.collected) {
+      e.rotTimer = (e.rotTimer||0) + 0.025;
+      e.obj.position.y = Math.sin(e.rotTimer) * 0.08;
+      e.obj.rotation.y = e.rotTimer * 0.5;
+    }
+    // Host bob
+    if (e.type === 'host' && !e.collected) {
+      if (!e.bobTimer) e.bobTimer = Math.random() * Math.PI * 2;
+      e.bobTimer += 0.03;
+      e.obj.position.y = Math.sin(e.bobTimer) * 0.1;
     }
     if (e.type === 'pilgrim') {
       e.obj.rotation.y = Math.atan2(player.x - e.obj.position.x, player.z - e.obj.position.z);
@@ -2094,7 +2305,7 @@ function triggerThereseAction() {
       triggerEcstasy();
       setTimeout(() => completeThereseTask(), 5500);
     } else {
-      showDialog(`<h3>Station ${TS.prayCount}/5</h3><em>"She relived each moment of the Passion with perfect fidelity."</em><br>— Fr. Naber`, 2500);
+      showDialog(`<h3>Station ${TS.prayCount}/5</h3><em>"She relived each moment of the Passion with perfect fidelity."</em><br>— Fr. Naber<br><br><span class="t-btn" onclick="hideDialog()">✝ Continue ✝</span>`, 0);
       playEcstasySound();
       spawnParticles(player.x, 1.5, player.z, 0xff4444, 8);
     }
@@ -2117,7 +2328,7 @@ function triggerThereseAction() {
             playMiracleSound();
             completeThereseTask();
           } else {
-            showDialog('<h3>Not the holy relic...</h3>Seek the one that glows most brightly.', 2000);
+            showDialog('<h3>Not the holy relic...</h3>Seek the one that glows most brightly.<br><br><span class="t-btn" onclick="hideDialog()">Try Again</span>', 0);
           }
         }
       }
@@ -2404,14 +2615,14 @@ function renderPassagePage(passageData) {
   const pageNum = passageState.pageIndex + 1;
 
   const navHtml = `
-    <div style="display:flex;gap:12px;margin-top:14px;justify-content:center;pointer-events:auto;">
+    <div style="display:flex;gap:12px;margin-top:14px;justify-content:center;pointer-events:auto;flex-wrap:wrap;">
       ${passageState.pageIndex > 0
-        ? `<span class="continue-hint" style="background:rgba(200,134,10,.2);padding:6px 14px;border-radius:4px;border:1px solid #c8860a;" onclick="prevPassagePage()">◀ PREV</span>`
+        ? `<span class="t-btn" onclick="prevPassagePage()">◀ Prev</span>`
         : ''}
-      <span style="color:#888;font-size:11px;align-self:center;">Reading ${pageNum} of ${passageState.totalPages}</span>
+      <span style="color:#888;font-size:11px;align-self:center;white-space:nowrap;">${pageNum} of ${passageState.totalPages}</span>
       ${!isLast
-        ? `<span class="continue-hint" style="background:rgba(200,134,10,.2);padding:6px 14px;border-radius:4px;border:1px solid #c8860a;" onclick="nextPassagePage()">NEXT ▶</span>`
-        : `<span class="continue-hint" style="background:rgba(200,134,10,.4);padding:6px 14px;border-radius:4px;border:1px solid #ffd700;color:#ffd700;" onclick="showThereseEvent(${passageState.nextEventIndex})">▶ CONTINUE JOURNEY (${passageState.nextEventIndex}/${thereseEvents.length})</span>`}
+        ? `<span class="t-btn" onclick="nextPassagePage()">Next ▶</span>`
+        : `<span class="t-btn" style="border-color:#ffd700;color:#ffd700;" onclick="showThereseEvent(${passageState.nextEventIndex})">▶ Continue Journey</span>`}
     </div>`;
 
   showDialog(
@@ -2437,13 +2648,17 @@ function renderPassagePage(passageData) {
 }
 
 function nextPassagePage() {
-  const passageData = thereseBookPassages[TS.eventIndex];
+  const eventIdx = passageState.nextEventIndex - 1;
+  const passageData = thereseBookPassages[eventIdx];
+  if (!passageData) return;
   passageState.pageIndex = Math.min(passageState.pageIndex + 1, passageState.totalPages - 1);
   renderPassagePage(passageData);
 }
 
 function prevPassagePage() {
-  const passageData = thereseBookPassages[TS.eventIndex];
+  const eventIdx = passageState.nextEventIndex - 1;
+  const passageData = thereseBookPassages[eventIdx];
+  if (!passageData) return;
   passageState.pageIndex = Math.max(passageState.pageIndex - 1, 0);
   renderPassagePage(passageData);
 }
@@ -2458,14 +2673,30 @@ function completeThereseTask() {
   spawnParticles(player.x, 2, player.z, 0xffd700, 25);
   playMiracleSound();
 
-  // Brief completion flash, then open book passages
+  // Show completion with manual CONTINUE button — no auto-dismiss
+  const btn = document.getElementById('actionBtn');
+  btn.classList.add('visible');
+  btn.innerHTML = '📖 Read';
+  btn.onclick = () => {
+    showBookPassages(TS.eventIndex, nextIndex);
+    btn.onclick = () => triggerThereseAction();
+  };
+
   showDialog(
-    `<h3>✝ ${ev.title} — Complete</h3>
-    <em>${thereseQuotes[TS.eventIndex % thereseQuotes.length]}</em>
-    <br><br>Score: <strong>${GS.score}</strong>
-    <br><br><small style="color:#aaa">Opening the books...</small>`,
-    2200,
-    () => showBookPassages(TS.eventIndex, nextIndex)
+    `<div style="text-align:center;padding:4px 0;">
+      <div style="font-size:28px;margin-bottom:8px;">✝</div>
+      <h3 style="font-size:clamp(14px,3vw,20px);margin-bottom:10px;">${ev.title} — Complete</h3>
+      <div style="border-left:3px solid #ffd700;padding:8px 12px;text-align:left;margin-bottom:12px;background:rgba(255,215,0,0.06);">
+        <em style="color:#ffeebb;">${thereseQuotes[TS.eventIndex % thereseQuotes.length]}</em>
+      </div>
+      <div style="color:#c8a060;font-size:13px;margin-bottom:14px;">Score: <strong style="color:#ffd700;">${GS.score}</strong></div>
+      <div style="pointer-events:auto;text-align:center;">
+        <span class="t-btn" style="border-color:#ffd700;color:#ffd700;" onclick="showBookPassages(${TS.eventIndex},${nextIndex})">
+          📖 Read the Books ▶
+        </span>
+      </div>
+    </div>`,
+    0
   );
 }
 
@@ -2487,7 +2718,7 @@ function endThereseMode() {
     <br>— Fr. Josef Naber, funeral homily, 1962
     <br><br><strong>The cause for her beatification is ongoing.</strong> Servant of God Therese Neumann, pray for us.
     <br><br>Final Score: <strong>${GS.score}</strong>
-    <br><br><span class="continue-hint" onclick="returnToMenu()">▶ RETURN TO MENU</span>`,
+    <br><br><span class="t-btn" onclick="returnToMenu()">▶ Return to Menu</span>`,
     0
   );
   document.getElementById('actionBtn').innerHTML = 'MENU';
