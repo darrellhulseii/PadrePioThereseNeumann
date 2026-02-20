@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -51,7 +52,17 @@
   .dpad-btn:active,.dpad-btn.pressed{background:rgba(200,134,10,.6);}
   #db-up{top:0;left:55px;}#db-down{bottom:0;left:55px;}#db-left{left:0;top:55px;}#db-right{right:0;top:55px;}
   #db-center{left:55px;top:55px;border-radius:50%;font-size:13px;}
-  #actionBtn{position:fixed;bottom:40px;right:24px;z-index:30;width:70px;height:70px;border-radius:50%;
+  /* Camera joystick for flight mode */
+  #cameraJoy{position:fixed;bottom:24px;right:24px;z-index:30;width:160px;height:160px;pointer-events:auto;display:none;}
+  #cameraJoy.visible{display:block;}
+  #cameraJoy-ring{position:absolute;inset:0;border-radius:50%;background:rgba(0,0,0,.5);border:2px solid rgba(100,150,255,.4);}
+  .cam-btn{position:absolute;width:50px;height:50px;display:flex;align-items:center;justify-content:center;
+    background:rgba(100,150,255,.25);border:1.5px solid rgba(100,150,255,.5);border-radius:6px;
+    font-size:20px;color:#aaccff;cursor:pointer;transition:background .1s;-webkit-tap-highlight-color:transparent;}
+  .cam-btn:active,.cam-btn.pressed{background:rgba(100,150,255,.6);}
+  #cam-up{top:0;left:55px;}#cam-down{bottom:0;left:55px;}#cam-left{left:0;top:55px;}#cam-right{right:0;top:55px;}
+  #cam-center{left:55px;top:55px;border-radius:50%;font-size:13px;background:rgba(100,150,255,.35);}
+  #actionBtn{position:fixed;bottom:110px;right:80px;z-index:30;width:70px;height:70px;border-radius:50%;
     background:rgba(200,134,10,.3);border:2px solid #c8860a;font-family:'Cinzel',serif;font-size:11px;
     letter-spacing:1px;color:#ffd980;display:none;align-items:center;justify-content:center;text-align:center;
     cursor:pointer;-webkit-tap-highlight-color:transparent;}
@@ -96,11 +107,20 @@
   <div class="dpad-btn" id="db-right">▶</div>
   <div class="dpad-btn" id="db-center" onclick="triggerAction()">✝</div>
 </div>
+<div id="cameraJoy">
+  <div id="cameraJoy-ring"></div>
+  <div class="cam-btn" id="cam-up">↑</div>
+  <div class="cam-btn" id="cam-down">↓</div>
+  <div class="cam-btn" id="cam-left">←</div>
+  <div class="cam-btn" id="cam-right">→</div>
+  <div class="cam-btn" id="cam-center">👁</div>
+</div>
 <div id="actionBtn" onclick="triggerAction()">PRAY ✝</div>
 <div id="progressWrap"><div id="progressBar"></div></div>
 <button id="musicBtn" onclick="toggleMusic()" title="Toggle Music">♪</button>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
 <script>
 // ═══════════════════════════════════════════════════════
 //  GIUSEPPE'S JOURNEY v2 — 3D + Touch D-Pad Edition
@@ -108,16 +128,25 @@
 //  Web Audio Italian music, rescue SFX, glow effects
 // ═══════════════════════════════════════════════════════
 
-// ── THREE.JS SETUP ──────────────────────────────────────
-const renderer = new THREE.WebGLRenderer({canvas:document.getElementById('c'),antialias:true});
-renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+// ── THREE.JS SETUP ─────────────────────────────────────── 
+// HIGH QUALITY RENDERING
+const renderer = new THREE.WebGLRenderer({
+  canvas:document.getElementById('c'),
+  antialias:true,
+  alpha:false,
+  powerPreference:'high-performance',
+  precision:'highp'
+});
+// Use full device pixel ratio for maximum sharpness (even on retina displays)
+renderer.setPixelRatio(window.devicePixelRatio);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.2;
+renderer.outputEncoding = THREE.sRGBEncoding;
 
 const scene  = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(60,1,0.1,500);
+const camera = new THREE.PerspectiveCamera(65,1,0.1,500); // Wider FOV for more dramatic view
 
 function resize(){
   const w=innerWidth,h=innerHeight;
@@ -728,6 +757,7 @@ function playHealSound(){
 // ── INPUT ────────────────────────────────────────────────
 const keys={};
 const touchInput={up:false,down:false,left:false,right:false,action:false};
+const cameraInput={up:false,down:false,left:false,right:false}; // Camera joystick
 
 document.addEventListener('keydown',e=>{keys[e.key.toLowerCase()]=true;if(e.key===' ')e.preventDefault();});
 document.addEventListener('keyup',e=>{keys[e.key.toLowerCase()]=false;});
@@ -741,6 +771,17 @@ setupDpadBtn('db-up','up');
 setupDpadBtn('db-down','down');
 setupDpadBtn('db-left','left');
 setupDpadBtn('db-right','right');
+
+// Camera joystick buttons
+function setupCamBtn(id,prop){
+  const el=document.getElementById(id);
+  ['touchstart','mousedown'].forEach(ev=>el.addEventListener(ev,e=>{e.preventDefault();cameraInput[prop]=true;el.classList.add('pressed');},{passive:false}));
+  ['touchend','mouseup','touchcancel'].forEach(ev=>el.addEventListener(ev,e=>{e.preventDefault();cameraInput[prop]=false;el.classList.remove('pressed');},{passive:false}));
+}
+setupCamBtn('cam-up','up');
+setupCamBtn('cam-down','down');
+setupCamBtn('cam-left','left');
+setupCamBtn('cam-right','right');
 
 function isUp(){return keys['arrowup']||keys['w']||touchInput.up;}
 function isDown(){return keys['arrowdown']||keys['s']||touchInput.down;}
@@ -801,44 +842,93 @@ const player={obj:null,x:0,z:0,speed:0.15};
 function box(w,h,d,color=0xffffff,metalness=0,roughness=0.8){
   const geo=new THREE.BoxGeometry(w,h,d);
   const mat=new THREE.MeshStandardMaterial({color,metalness,roughness});
-  return new THREE.Mesh(geo,mat);
+  const mesh=new THREE.Mesh(geo,mat);
+  mesh.castShadow=true;
+  mesh.receiveShadow=true;
+  return mesh;
 }
 function sphere(r,color=0xffffff,metalness=0,roughness=0.7){
-  const geo=new THREE.SphereGeometry(r,8,8);
+  // MUCH higher quality spheres: 32x24 segments (was 8x8)
+  const geo=new THREE.SphereGeometry(r,32,24);
   const mat=new THREE.MeshStandardMaterial({color,metalness,roughness});
-  return new THREE.Mesh(geo,mat);
+  const mesh=new THREE.Mesh(geo,mat);
+  mesh.castShadow=true;
+  mesh.receiveShadow=true;
+  return mesh;
 }
 function cylinder(rt,rb,h,color=0xffffff){
-  const geo=new THREE.CylinderGeometry(rt,rb,h,8);
-  const mat=new THREE.MeshStandardMaterial({color});
-  return new THREE.Mesh(geo,mat);
+  const geo=new THREE.CylinderGeometry(rt,rb,h,20); // Increased to 20 segments
+  const mat=new THREE.MeshStandardMaterial({color,roughness:0.7,metalness:0.1});
+  const mesh=new THREE.Mesh(geo,mat);
+  mesh.castShadow=true;
+  mesh.receiveShadow=true;
+  return mesh;
 }
 
 // ── CHARACTER BUILDER ────────────────────────────────────
+// HIGHER QUALITY with more detail and better materials
 function buildCharacter(bodyColor,headColor,scale=1){
   const g=new THREE.Group();
-  const body=box(0.5*scale,0.7*scale,0.3*scale,bodyColor,0,0.9);
+  
+  // Body (torso) - slightly rounder with better shading
+  const body=box(0.5*scale,0.7*scale,0.3*scale,bodyColor,0,0.85);
+  body.castShadow=true; body.receiveShadow=true;
   body.position.y=0.35*scale; g.add(body);
-  const head=sphere(0.22*scale,headColor,0,0.8);
-  head.position.y=0.9*scale; g.add(head);
-  const la=box(0.15*scale,0.5*scale,0.15*scale,bodyColor);
-  la.position.set(-0.35*scale,0.3*scale,0); la.rotation.z=0.3; g.add(la);
+  
+  // Head - higher poly sphere
+  const headGeo=new THREE.SphereGeometry(0.22*scale,20,16); // Higher poly (was default)
+  const headMat=new THREE.MeshStandardMaterial({
+    color:headColor,
+    roughness:0.75,
+    metalness:0
+  });
+  const head=new THREE.Mesh(headGeo,headMat);
+  head.position.y=0.9*scale;
+  head.castShadow=true; head.receiveShadow=true;
+  g.add(head);
+  
+  // Arms with slight taper
+  const armGeo=new THREE.BoxGeometry(0.15*scale,0.5*scale,0.15*scale);
+  const armMat=new THREE.MeshStandardMaterial({color:bodyColor,roughness:0.8});
+  const la=new THREE.Mesh(armGeo,armMat);
+  la.position.set(-0.35*scale,0.3*scale,0); la.rotation.z=0.3;
+  la.castShadow=true; g.add(la);
   const ra=la.clone();
-  ra.position.set(0.35*scale,0.3*scale,0); ra.rotation.z=-0.3; g.add(ra);
+  ra.position.set(0.35*scale,0.3*scale,0); ra.rotation.z=-0.3;
+  g.add(ra);
+  
+  // Legs (for better proportions)
+  const legGeo=new THREE.BoxGeometry(0.18*scale,0.35*scale,0.18*scale);
+  const legMat=new THREE.MeshStandardMaterial({color:bodyColor,roughness:0.8});
+  const ll=new THREE.Mesh(legGeo,legMat);
+  ll.position.set(-0.15*scale,-0.18*scale,0);
+  ll.castShadow=true; g.add(ll);
+  const rl=ll.clone();
+  rl.position.set(0.15*scale,-0.18*scale,0);
+  g.add(rl);
+  
   return g;
 }
 function buildGiuseppe(){
   const g=buildCharacter(0x1a5c1a,0xffd194);
+  // Hat with better geometry
   const hat=cylinder(0.18,0.22,0.12,0x1a3a0a);
-  hat.position.y=1.12; g.add(hat);
+  hat.position.y=1.12; hat.castShadow=true; g.add(hat);
   return g;
 }
 function buildPadrePio(){
   const g=buildCharacter(0x6b3a1f,0xffe4c4);
   const beard=box(0.2,0.15,0.1,0x4a2810);
   beard.position.set(0,0.7,0.18); g.add(beard);
-  const haloGeo=new THREE.TorusGeometry(0.3,0.025,8,32);
-  const haloMat=new THREE.MeshStandardMaterial({color:0xffd700,emissive:0xffd700,emissiveIntensity:0.6,metalness:0.9,roughness:0.1});
+  // Higher poly halo
+  const haloGeo=new THREE.TorusGeometry(0.3,0.03,12,48); // Much higher poly
+  const haloMat=new THREE.MeshStandardMaterial({
+    color:0xffd700,
+    emissive:0xffd700,
+    emissiveIntensity:0.7,
+    metalness:0.9,
+    roughness:0.1
+  });
   const halo=new THREE.Mesh(haloGeo,haloMat);
   halo.position.y=1.2; halo.rotation.x=Math.PI*0.15; g.add(halo);
   return g;
@@ -903,6 +993,7 @@ function addRescueGlow(position){
 
 // ── SCENE MANAGEMENT ─────────────────────────────────────
 let sceneObjects=[];
+let buildings=[]; // Collision boxes for all solid buildings
 function clearScene(){
   // Remove all tracked scene objects
   sceneObjects.forEach(o=>{
@@ -916,6 +1007,7 @@ function clearScene(){
     });
   });
   sceneObjects=[];
+  buildings=[]; // Clear collision data
   // Remove lights explicitly
   const lights=scene.children.filter(c=>c.isLight);
   lights.forEach(l=>scene.remove(l));
@@ -925,6 +1017,43 @@ function clearScene(){
   if(player.obj){scene.remove(player.obj);player.obj=null;}
 }
 function addToScene(obj){scene.add(obj);sceneObjects.push(obj);return obj;}
+function addBuilding(obj, x, z, width, depth){
+  addToScene(obj);
+  // Add to collision system with AABB (axis-aligned bounding box)
+  buildings.push({
+    minX: x - width/2,
+    maxX: x + width/2,
+    minZ: z - depth/2,
+    maxZ: z + depth/2
+  });
+  return obj;
+}
+
+// Check if a position collides with any building (with padding for player radius)
+function checkCollision(x, z, radius=0.5){
+  for(let b of buildings){
+    if(x + radius > b.minX && x - radius < b.maxX &&
+       z + radius > b.minZ && z - radius < b.maxZ){
+      return true; // Collision detected
+    }
+  }
+  return false;
+}
+
+// Find a valid spawn position (not inside buildings, within bounds)
+function findValidSpawnPosition(bound=20, minDist=3){
+  for(let attempts=0; attempts<50; attempts++){
+    const angle = Math.random() * Math.PI * 2;
+    const r = minDist + Math.random() * (bound - minDist);
+    const x = Math.cos(angle) * r;
+    const z = Math.sin(angle) * r;
+    if(!checkCollision(x, z, 0.8)){ // Check with entity radius
+      return {x, z};
+    }
+  }
+  // Fallback: return a position even if not perfect
+  return {x: Math.random()*6-3, z: Math.random()*6-3};
+}
 
 function setupLights(){
   scene.children.filter(c=>c.isLight).forEach(l=>scene.remove(l));
@@ -932,10 +1061,12 @@ function setupLights(){
   const sun=new THREE.DirectionalLight(0xfff5e0,1.4);
   sun.position.set(20,40,10);
   sun.castShadow=true;
-  sun.shadow.mapSize.set(1024,1024);
+  // MUCH HIGHER shadow resolution for crisp, detailed shadows
+  sun.shadow.mapSize.set(2048,2048); // Doubled from 1024 to 2048
   sun.shadow.camera.left=sun.shadow.camera.bottom=-40;
   sun.shadow.camera.right=sun.shadow.camera.top=40;
   sun.shadow.camera.far=200;
+  sun.shadow.radius=1.5; // Slightly softer edges
   scene.add(sun);
 }
 
@@ -956,12 +1087,12 @@ function buildItalianCity(){
   const bColors=[0xd4a96a,0xc8905a,0xe2c08a,0xb87850,0xdab878];
   for(let bx=-4;bx<=4;bx++){
     for(let bz=-4;bz<=4;bz++){
-      if(Math.abs(bx)<=1||Math.abs(bz)<=1)continue;
+      if(Math.abs(bx)<=1||Math.abs(bz)<=1)continue; // Keep center clear
       const h=3+Math.random()*5;
       const bld=box(3.5,h,3.5,bColors[Math.floor(Math.random()*bColors.length)]);
       bld.position.set(bx*9,h/2,bz*9);
       bld.castShadow=true; bld.receiveShadow=true;
-      addToScene(bld);
+      addBuilding(bld, bx*9, bz*9, 3.5, 3.5); // Register as solid building
       for(let wy=1;wy<h-1;wy+=1.2){
         for(let side=0;side<4;side++){
           const win=new THREE.Mesh(new THREE.BoxGeometry(0.5,0.5,0.05),
@@ -1037,17 +1168,33 @@ function buildShelterScene(){
   scene.fog=new THREE.Fog(0x6090b0,40,100);
   setupLights();
   const ground=box(60,0.2,60,0x607850);ground.receiveShadow=true;addToScene(ground);
+  
+  // More vibrant building colors for communion/wine stage
+  const bldColors=[
+    0xd4a96a, 0xc8905a, 0xe2c08a, 0xb87850, 0xdab878, // Warm earth tones
+    0x8a9890, 0xa8b8a0, 0x98a8b8, 0xb89888, 0xc8a888, // Cool grays/tans
+    0xe0d0a0, 0xd8b088, 0xc8988a, 0xb8a098, 0xa89888  // Muted pastels
+  ];
+  
   for(let bx=-2;bx<=2;bx++){
     for(let bz=-2;bz<=2;bz++){
-      if(bx===0&&bz===0)continue;
-      const floors=2+Math.floor(Math.random()*4);
-      const h=floors*1.5;
-      const bld=box(4,h,4,0x8a9890);bld.position.set(bx*8,h/2,bz*8);
-      bld.castShadow=true;bld.receiveShadow=true;addToScene(bld);
+      if(bx===0&&bz===0)continue; // Keep center clear for spawning
+      const floors=2+Math.floor(Math.random()*3); // 2-4 floors
+      const h=floors*1.0; // SHORTER: 1.0 meter per floor instead of 1.5
+      const color=bldColors[Math.floor(Math.random()*bldColors.length)];
+      const bld=box(4,h,4,color);
+      bld.position.set(bx*8,h/2,bz*8);
+      bld.castShadow=true;bld.receiveShadow=true;
+      addBuilding(bld, bx*8, bz*8, 4, 4); // Register collision
+      
       for(let f=0;f<floors;f++){
-        const bal=box(4.6,0.15,1.2,0x707878);bal.position.set(bx*8,f*1.5+1.3,bz*8+2.6);addToScene(bal);
+        const bal=box(4.6,0.15,1.2,0x707878);
+        bal.position.set(bx*8,f*1.0+0.9,bz*8+2.6);
+        addToScene(bal);
       }
-      const roof=box(4,0.2,4,0x4a7a4a);roof.position.set(bx*8,h+0.1,bz*8);addToScene(roof);
+      const roof=box(4,0.2,4,0x4a7a4a);
+      roof.position.set(bx*8,h+0.1,bz*8);
+      addToScene(roof);
     }
   }
 }
@@ -1061,24 +1208,45 @@ function buildChurchInterior(){
   const c2=new THREE.PointLight(0xff8833,2,8);c2.position.set(3,2,2);addToScene(c2);
   const gl=new THREE.PointLight(0xffd700,3,12);gl.position.set(0,6,0);addToScene(gl);
   const floor=box(20,0.2,20,0x5a3a1a);floor.position.y=-0.1;addToScene(floor);
+  
+  // Pews (solid — can't walk through)
   for(let r=0;r<4;r++){
     for(let s=-1;s<=1;s+=2){
-      const pew=box(3,0.5,0.8,0x4a2e10);pew.position.set(s*2.5,0.2,r*2-4);addToScene(pew);
+      const pew=box(3,0.5,0.8,0x4a2e10);
+      pew.position.set(s*2.5,0.2,r*2-4);
+      addBuilding(pew, s*2.5, r*2-4, 3, 0.8);
     }
   }
-  const booth=box(2.5,3.5,2,0x5a3210);booth.position.set(-4,1.65,0);booth.castShadow=true;addToScene(booth);
+  
+  // Confession booth (solid)
+  const booth=box(2.5,3.5,2,0x5a3210);
+  booth.position.set(-4,1.65,0);
+  booth.castShadow=true;
+  addBuilding(booth, -4, 0, 2.5, 2);
+  
   const bRoof=box(2.8,0.3,2.3,0x3a2010);bRoof.position.set(-4,3.45,0);addToScene(bRoof);
   const screen=box(0.05,1.5,0.8,0x8a5a2a);screen.position.set(-3.24,1.5,0);addToScene(screen);
   const curtain=box(0.05,3,1.8,0x6a1a1a);curtain.position.set(-5.2,1.5,0);addToScene(curtain);
-  const altar=box(3,1,1.5,0xd4a96a,0.5,0.3);altar.position.set(0,0.5,6);addToScene(altar);
+  
+  // Altar (solid)
+  const altar=box(3,1,1.5,0xd4a96a,0.5,0.3);
+  altar.position.set(0,0.5,6);
+  addBuilding(altar, 0, 6, 3, 1.5);
+  
   const cr1=box(0.15,2,0.15,0xffd700,0.9,0.1);cr1.position.set(0,2.5,6.5);addToScene(cr1);
   const cr2=box(1.2,0.15,0.15,0xffd700,0.9,0.1);cr2.position.set(0,3.2,6.5);addToScene(cr2);
 
-  // Columns — BUG FIX: was cloning and then setting absolute z, now correctly offset
+  // Columns (solid — can't walk through)
   for(let i=-2;i<=2;i+=2){
-    const colA=cylinder(0.3,0.3,5,0xc8a060);colA.position.set(i*2.5,2.5,-4);addToScene(colA);
-    const colB=cylinder(0.3,0.3,5,0xc8a060);colB.position.set(i*2.5,2.5,5);addToScene(colB);
+    const colA=cylinder(0.3,0.3,5,0xc8a060);
+    colA.position.set(i*2.5,2.5,-4);
+    addBuilding(colA, i*2.5, -4, 0.6, 0.6); // Column collision
+    
+    const colB=cylinder(0.3,0.3,5,0xc8a060);
+    colB.position.set(i*2.5,2.5,5);
+    addBuilding(colB, i*2.5, 5, 0.6, 0.6);
   }
+  
   const glassColors=[0xff4444,0x44aaff,0xffaa00,0x44ff88];
   for(let g=0;g<4;g++){
     const glass=new THREE.Mesh(new THREE.BoxGeometry(1.2,2,0.1),
@@ -1111,11 +1279,15 @@ function buildHospitalScene(){
   scene.fog=new THREE.Fog(0xddeeff,40,100);
   setupLights();
   const floor=box(30,0.2,30,0xeeeedd);floor.receiveShadow=true;addToScene(floor);
-  const hosp=box(20,8,15,0xf0f0f8);hosp.position.set(0,4,5);hosp.castShadow=true;addToScene(hosp);
+  const hosp=box(20,8,15,0xf0f0f8);hosp.position.set(0,4,5);hosp.castShadow=true;
+  addBuilding(hosp, 0, 5, 20, 15); // Hospital building is solid
   const rc1=box(1,4,1,0xff2222);rc1.position.set(0,10,5);addToScene(rc1);
   const rc2=box(4,1,1,0xff2222);rc2.position.set(0,11.5,5);addToScene(rc2);
   const court=box(14,0.2,10,0xaabbaa);court.position.set(0,0.1,-7);addToScene(court);
-  for(let i=-2;i<=2;i+=2){const b=box(2,0.3,0.6,0x8a6040);b.position.set(i*2.5,0.25,-7);addToScene(b);}
+  for(let i=-2;i<=2;i+=2){
+    const b=box(2,0.3,0.6,0x8a6040);b.position.set(i*2.5,0.25,-7);
+    addBuilding(b, i*2.5, -7, 2, 0.6); // Benches are solid
+  }
 }
 
 function buildBioScene(index){
@@ -1144,42 +1316,78 @@ function createCommunionItem(x,z,type){
   const g = new THREE.Group();
 
   if(type % 2 === 0){
-    // ── COMMUNION HOST (round disc of bread) ──
-    // Gold disc
+    // ── COMMUNION HOST (round disc of bread) ── BRIGHTER GLOW
+    // Gold disc with intense emissive
     const hostGeo = new THREE.CylinderGeometry(0.28,0.28,0.06,16);
-    const hostMat = new THREE.MeshStandardMaterial({color:0xf5e6c8,metalness:0.1,roughness:0.8,emissive:0xffeebb,emissiveIntensity:0.25});
+    const hostMat = new THREE.MeshStandardMaterial({
+      color:0xfff8e8,
+      metalness:0.2,
+      roughness:0.6,
+      emissive:0xffd700,
+      emissiveIntensity:0.8 // MUCH BRIGHTER
+    });
     const host = new THREE.Mesh(hostGeo,hostMat);
     host.position.y = 0.3; g.add(host);
     // Cross etched on top
-    const cv = box(0.04,0.02,0.24,0xd4b870,0.3,0.5); cv.position.set(0,0.34,0); g.add(cv);
-    const ch = box(0.24,0.02,0.04,0xd4b870,0.3,0.5); ch.position.set(0,0.34,0); g.add(ch);
-    // Golden glow ring underneath
-    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.3,0.03,6,20),
-      new THREE.MeshStandardMaterial({color:0xffd700,emissive:0xffd700,emissiveIntensity:0.9,metalness:0.8}));
+    const cv = box(0.04,0.02,0.24,0xffd700,0.5,0.3); cv.position.set(0,0.34,0); g.add(cv);
+    const ch = box(0.24,0.02,0.04,0xffd700,0.5,0.3); ch.position.set(0,0.34,0); g.add(ch);
+    // Golden glow ring underneath - INTENSE
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.3,0.04,6,20),
+      new THREE.MeshStandardMaterial({
+        color:0xffd700,
+        emissive:0xffd700,
+        emissiveIntensity:1.5, // VERY BRIGHT
+        metalness:0.9
+      }));
     ring.rotation.x = Math.PI/2; ring.position.y = 0.18; g.add(ring);
-    // White light
-    const light = new THREE.PointLight(0xffffff,1.6,3);
+    // MUCH BRIGHTER white light
+    const light = new THREE.PointLight(0xffffff,3.5,5); // Was 1.6,3 now 3.5,5
     light.position.y = 0.5; g.add(light);
     g.userData.itemType = 'host';
   } else {
-    // ── COMMUNION CHALICE (wine goblet) ──
+    // ── COMMUNION CHALICE (wine goblet) ── BRIGHTER GLOW
     // Base
     const base = cylinder(0.22,0.26,0.08,0xffd700); base.position.y = 0.04; g.add(base);
-    base.material = new THREE.MeshStandardMaterial({color:0xffd700,metalness:0.9,roughness:0.1,emissive:0xffd700,emissiveIntensity:0.15});
+    base.material = new THREE.MeshStandardMaterial({
+      color:0xffd700,
+      metalness:0.9,
+      roughness:0.1,
+      emissive:0xffd700,
+      emissiveIntensity:0.6 // BRIGHTER
+    });
     // Stem
     const stem = cylinder(0.06,0.06,0.32,0xffd700); stem.position.y = 0.24;
-    stem.material = new THREE.MeshStandardMaterial({color:0xffd700,metalness:0.9,roughness:0.1});
+    stem.material = new THREE.MeshStandardMaterial({
+      color:0xffd700,
+      metalness:0.9,
+      roughness:0.1,
+      emissive:0xffd700,
+      emissiveIntensity:0.4
+    });
     g.add(stem);
     // Cup (tapered cylinder)
     const cup = cylinder(0.22,0.15,0.28,0xffd700); cup.position.y = 0.54;
-    cup.material = new THREE.MeshStandardMaterial({color:0xffd700,metalness:0.9,roughness:0.1});
+    cup.material = new THREE.MeshStandardMaterial({
+      color:0xffd700,
+      metalness:0.9,
+      roughness:0.1,
+      emissive:0xffd700,
+      emissiveIntensity:0.5
+    });
     g.add(cup);
-    // Wine inside (dark red disc)
+    // Wine inside (dark red disc) - GLOWING
     const wine = new THREE.Mesh(new THREE.CylinderGeometry(0.19,0.19,0.06,12),
-      new THREE.MeshStandardMaterial({color:0x8b0000,roughness:0.4,emissive:0x440000,emissiveIntensity:0.3,transparent:true,opacity:0.9}));
+      new THREE.MeshStandardMaterial({
+        color:0xcc0000,
+        roughness:0.3,
+        emissive:0xff0000,
+        emissiveIntensity:0.7, // BRIGHT RED GLOW
+        transparent:true,
+        opacity:0.95
+      }));
     wine.position.y = 0.65; g.add(wine);
-    // Red glow
-    const light = new THREE.PointLight(0xff2200,1.0,3);
+    // MUCH BRIGHTER red glow
+    const light = new THREE.PointLight(0xff2200,3.0,5); // Was 1.0,3 now 3.0,5
     light.position.y = 0.7; g.add(light);
     g.userData.itemType = 'chalice';
   }
@@ -1248,26 +1456,21 @@ function spawnForStage(){
   const cfg=stageConfig(GS.stage);
   if(GS.subMode==='rescue'||GS.subMode==='transport'){
     for(let i=0;i<15;i++){
-      const a=Math.random()*Math.PI*2;
-      // Cap spawn radius so survivors always start within the player's hard boundary (25)
-      const maxR=Math.min(cfg.boundSize*0.5, 20);
-      const r=5+Math.random()*maxR;
-      createSurvivor(Math.cos(a)*r,Math.sin(a)*r);
+      const pos = findValidSpawnPosition(20, 5);
+      createSurvivor(pos.x, pos.z);
     }
   } else if(GS.subMode==='shelter'){
     // Alternating communion bread (host) and wine (chalice)
     for(let i=0;i<cfg.supplyCount;i++){
-      const a=Math.random()*Math.PI*2;
-      const r=4+Math.random()*12;
-      createCommunionItem(Math.cos(a)*r,Math.sin(a)*r,i); // even=host, odd=chalice
+      const pos = findValidSpawnPosition(15, 4);
+      createCommunionItem(pos.x, pos.z, i);
     }
   } else if(GS.subMode==='flight'){
     for(let i=0;i<7;i++)createPlane((Math.random()-0.5)*60,i*8-28);
   } else if(GS.subMode==='healing'){
     for(let i=0;i<10;i++){
-      const a=Math.random()*Math.PI*2;
-      const r=3+Math.random()*8;
-      createSickPerson(Math.cos(a)*r,Math.sin(a)*r);
+      const pos = findValidSpawnPosition(12, 3);
+      createSickPerson(pos.x, pos.z);
     }
   }
 }
@@ -1283,10 +1486,39 @@ function placePlayer(x,z,isPadre){
 }
 
 // ── CAMERA ───────────────────────────────────────────────
+// Camera offset and angle for flight mode
+let flightCamAngle = 0; // Horizontal rotation around player
+let flightCamPitch = 0.3; // Vertical angle (0 = level, positive = looking down)
+
 function updateCamera(){
   if(GS.subMode==='flight'){
-    camera.position.set(player.x-2,player.obj?player.obj.position.y+3:22,player.z);
-    camera.lookAt(player.x+5,player.obj?player.obj.position.y+2:22,player.z);
+    // Right joystick / arrow keys control camera rotation
+    if(cameraInput.left || keys['j']){
+      flightCamAngle -= 0.04;
+    }
+    if(cameraInput.right || keys['l']){
+      flightCamAngle += 0.04;
+    }
+    if(cameraInput.up || keys['i']){
+      flightCamPitch = Math.max(-0.5, flightCamPitch - 0.02);
+    }
+    if(cameraInput.down || keys['k']){
+      flightCamPitch = Math.min(1.0, flightCamPitch + 0.02);
+    }
+    
+    // Position camera around player using angle
+    const camDist = 10;
+    const camHeight = 3 + flightCamPitch * 5;
+    const px = player.obj ? player.obj.position.x : player.x;
+    const py = player.obj ? player.obj.position.y : 20;
+    const pz = player.obj ? player.obj.position.z : player.z;
+    
+    camera.position.set(
+      px + Math.sin(flightCamAngle) * camDist,
+      py + camHeight,
+      pz + Math.cos(flightCamAngle) * camDist
+    );
+    camera.lookAt(px, py, pz);
   } else if(GS.subMode==='bio'){
     camera.position.set(player.x,5,player.z+10);
     camera.lookAt(player.x,2,player.z);
@@ -1485,9 +1717,10 @@ function initFlightMode(){
   GS.subMode='flight';GS.planesRedirected=0;
   spawnForStage();
   document.getElementById('actionBtn').classList.remove('visible');
+  document.getElementById('cameraJoy').classList.add('visible'); // Show camera joystick
   updateHUD();
   showStageTitle('✈ Soaring Over Italy');
-  showDialog(`<h3>${ppQuotes[6]}</h3><br>Tap a plane to redirect it away from Italy! Redirect all 7 planes.<br><br><span class="t-btn" onclick="hideDialog()">▶ Begin</span>`,0);
+  showDialog(`<h3>${ppQuotes[6]}</h3><br><strong>LEFT STICK (Movement):</strong><br>↑ Fly forward (camera direction)<br>↓ Fly backward (reverse)<br>← Fly left (strafe)<br>→ Fly right (strafe)<br><br><strong>RIGHT STICK (Camera):</strong><br>Rotate view around Padre Pio<br><br>Movement follows camera direction!<br><br><span class="t-btn" onclick="hideDialog()">▶ Begin</span>`,0);
 }
 
 const raycaster=new THREE.Raycaster();
@@ -1516,6 +1749,7 @@ function checkPlaneTap(cx,cy){
 }
 
 function flightComplete(){
+  document.getElementById('cameraJoy').classList.remove('visible'); // Hide camera joystick
   const d=ppPrayers.planesComplete;
   showDialog(`<h3>✈ All planes redirected!</h3><em>${d.quote}</em><br><br>${d.prayer}<br><br><span class="t-btn" onclick="hideDialog();initHealingMode()">✝ Continue to Healing ▶</span>`,0);
 }
@@ -1525,7 +1759,7 @@ let healCooldown=0;
 
 function initHealingMode(){
   clearScene();buildHospitalScene();
-  placePlayer(0,0,true);
+  placePlayer(0,-10,true); // Spawn in courtyard (z=-10) away from hospital building
   GS.subMode='healing';GS.peopleHealed=0;
   healCooldown=0;
   spawnForStage();
@@ -1683,6 +1917,7 @@ function returnToMenu(){
   entities.forEach(e=>{if(e.obj)scene.remove(e.obj);});entities=[];
   document.getElementById('menu').style.display='flex';
   document.getElementById('actionBtn').classList.remove('visible');
+  document.getElementById('cameraJoy').classList.remove('visible'); // Hide camera joystick
   hideDialog();
 }
 
@@ -1784,10 +2019,10 @@ function updateShelter(){
     if(e.type==='supply'&&!e.collected){
       e.rotTimer=(e.rotTimer||0)+0.04;
       e.obj.rotation.y=e.rotTimer;
-      e.obj.position.y=Math.sin(e.rotTimer)*0.15+0.3;
+      e.obj.position.y=Math.sin(e.rotTimer)*0.18+0.35; // Bob slightly higher
       const dx=e.obj.position.x-player.x,dz=e.obj.position.z-player.z;
       const dist=Math.sqrt(dx*dx+dz*dz);
-      if(dist<1.8){
+      if(dist<2.5){ // INCREASED from 1.8 to 2.5 for easier collection
         e.collected=true;
         const pos=e.obj.position.clone();
         scene.remove(e.obj);
@@ -1802,23 +2037,82 @@ function updateShelter(){
 }
 
 function updateFlight(){
+  // Check for nearby planes for interact button
+  let nearestPlane = null;
+  let nearestDist = Infinity;
+  
   entities.forEach(e=>{
     if(e.type==='plane'){
       if(!e.redirected){
         e.obj.position.x+=e.speed;
         e.obj.position.z+=Math.sin(GS.animTime+e.obj.position.z*0.1)*0.03;
         if(e.obj.position.x>80)e.obj.position.x=-80;
+        
+        // Check distance to player for interact button
+        const dx = e.obj.position.x - player.obj.position.x;
+        const dz = e.obj.position.z - player.obj.position.z;
+        const dist = Math.sqrt(dx*dx + dz*dz);
+        if(dist < nearestDist){
+          nearestDist = dist;
+          nearestPlane = e;
+        }
       } else {
         e.obj.position.x-=e.speed*0.5;
         e.obj.position.y+=0.025;
       }
     }
   });
-  if(isUp())player.obj.position.z-=0.3;
-  if(isDown())player.obj.position.z+=0.3;
-  if(isLeft())player.obj.position.x-=0.3;
-  if(isRight())player.obj.position.x+=0.3;
-  player.x=player.obj.position.x;player.z=player.obj.position.z;
+  
+  // Show interact button when near a plane
+  const interactBtn = document.getElementById('actionBtn');
+  if(nearestPlane && nearestDist < 8){
+    interactBtn.classList.add('visible');
+    interactBtn.textContent = '✋ REDIRECT';
+    // Action button redirects plane
+    if(actionJustPressed()){
+      nearestPlane.redirected=true;
+      nearestPlane.obj.traverse(c=>{if(c.material)c.material.color.set(0x00dd44);});
+      GS.planesRedirected++;GS.score+=75;
+      spawnParticles(nearestPlane.obj.position.x,nearestPlane.obj.position.y,nearestPlane.obj.position.z,0x00ff88,15);
+      updateHUD();
+      if(GS.planesRedirected>=7)flightComplete();
+    }
+  } else {
+    interactBtn.classList.remove('visible');
+  }
+  
+  // ── OMNI-DIRECTIONAL CAMERA-RELATIVE FLIGHT CONTROLS ──
+  // Movement is relative to camera direction, not absolute world axes
+  let moveForward = 0, moveRight = 0;
+  if(isUp()) moveForward = 1;      // Push forward in camera direction
+  if(isDown()) moveForward = -1;   // Pull backward (reverse)
+  if(isLeft()) moveRight = -1;     // Strafe left
+  if(isRight()) moveRight = 1;     // Strafe right
+  
+  if(moveForward !== 0 || moveRight !== 0){
+    // Calculate movement vector relative to camera's horizontal rotation
+    const camAngle = flightCamAngle;
+    const speed = 0.45;
+    
+    // Forward/backward movement in camera's facing direction
+    player.obj.position.x += Math.sin(camAngle) * moveForward * speed;
+    player.obj.position.z += Math.cos(camAngle) * moveForward * speed;
+    
+    // Strafe left/right perpendicular to camera
+    player.obj.position.x += Math.cos(camAngle) * moveRight * speed;
+    player.obj.position.z -= Math.sin(camAngle) * moveRight * speed;
+    
+    // Orient player to movement direction
+    if(moveForward !== 0){
+      player.obj.rotation.y = camAngle + (moveForward < 0 ? Math.PI : 0);
+    }
+  }
+  
+  // Bounds
+  player.obj.position.x=Math.max(-70,Math.min(70,player.obj.position.x));
+  player.obj.position.z=Math.max(-40,Math.min(40,player.obj.position.z));
+  player.x=player.obj.position.x;
+  player.z=player.obj.position.z;
 }
 
 function updateHealing(){
@@ -1839,19 +2133,68 @@ function update(ts){
   // Player movement (all modes except flight)
   if(GS.subMode!=='flight'&&player.obj){
     let dx=0,dz=0;
+    const isMoving = isLeft()||isRight()||isUp()||isDown();
     if(isLeft())dx-=player.speed*dt;
     if(isRight())dx+=player.speed*dt;
     if(isUp())dz-=player.speed*dt;
     if(isDown())dz+=player.speed*dt;
     if(dx!==0&&dz!==0){dx*=0.707;dz*=0.707;}
+    
     const bound=25;
-    player.x=Math.max(-bound,Math.min(bound,player.x+dx));
-    player.z=Math.max(-bound,Math.min(bound,player.z+dz));
+    const newX=player.x+dx;
+    const newZ=player.z+dz;
+    
+    // Check collision before moving
+    if(!checkCollision(newX, newZ, 0.5) && 
+       newX>=-bound && newX<=bound && newZ>=-bound && newZ<=bound){
+      player.x=newX;
+      player.z=newZ;
+    }
+    
     player.obj.position.x=player.x;
     player.obj.position.z=player.z;
+    
     if(dx!==0||dz!==0){
       player.obj.rotation.y=Math.atan2(dx,dz);
       player.obj.position.y=Math.abs(Math.sin(GS.animTime*12))*0.07;
+    }
+    
+    // ── WIND EFFECT for Giuseppe when moving ──────────────
+    if(isMoving && GS.mode==='game' && Math.random()<0.15){
+      // Spawn wind streak particles behind player
+      const angle = player.obj.rotation.y + Math.PI; // Behind player
+      const offsetDist = 0.6 + Math.random()*0.4;
+      const wx = player.x + Math.sin(angle) * offsetDist + (Math.random()-0.5)*0.5;
+      const wz = player.z + Math.cos(angle) * offsetDist + (Math.random()-0.5)*0.5;
+      
+      const streak = new THREE.Mesh(
+        new THREE.BoxGeometry(0.08, 0.08, 0.4),
+        new THREE.MeshBasicMaterial({
+          color: 0xccddff,
+          transparent: true,
+          opacity: 0.6
+        })
+      );
+      streak.position.set(wx, 0.4 + Math.random()*0.8, wz);
+      streak.rotation.y = angle;
+      scene.add(streak);
+      
+      // Animate wind streak
+      let life = 0;
+      const windInterval = setInterval(()=>{
+        life += 0.05;
+        streak.material.opacity = Math.max(0, 0.6 - life*1.2);
+        streak.position.x += Math.sin(angle) * 0.05;
+        streak.position.z += Math.cos(angle) * 0.05;
+        streak.scale.x *= 0.95;
+        streak.scale.y *= 0.95;
+        if(life > 0.5){
+          clearInterval(windInterval);
+          scene.remove(streak);
+          streak.geometry.dispose();
+          streak.material.dispose();
+        }
+      }, 30);
     }
   }
 
@@ -2126,14 +2469,17 @@ function buildBavarianFarm() {
   setupLights();
   // Lush green meadow
   const ground = box(80, 0.2, 80, 0x5a8040); ground.receiveShadow = true; addToScene(ground);
-  // Farmhouse
-  const fHouse = box(7, 4, 6, 0xd4b87a); fHouse.position.set(-6, 2, -2); fHouse.castShadow = true; addToScene(fHouse);
+  // Farmhouse (solid)
+  const fHouse = box(7, 4, 6, 0xd4b87a); fHouse.position.set(-6, 2, -2); fHouse.castShadow = true;
+  addBuilding(fHouse, -6, -2, 7, 6);
   const fRoof = new THREE.Mesh(new THREE.ConeGeometry(5.5, 3, 4), new THREE.MeshStandardMaterial({color:0x8b3a1a,roughness:1}));
   fRoof.position.set(-6, 5.5, -2); fRoof.rotation.y = Math.PI/4; addToScene(fRoof);
-  // Barn
-  const barn = box(8, 3.5, 5, 0x8b5a2a); barn.position.set(6, 1.75, 3); barn.castShadow = true; addToScene(barn);
-  // Church steeple in distance
-  const cBody = box(3, 6, 3, 0xf0e0c8); cBody.position.set(-15, 3, -15); addToScene(cBody);
+  // Barn (solid)
+  const barn = box(8, 3.5, 5, 0x8b5a2a); barn.position.set(6, 1.75, 3); barn.castShadow = true;
+  addBuilding(barn, 6, 3, 8, 5);
+  // Church steeple in distance (solid)
+  const cBody = box(3, 6, 3, 0xf0e0c8); cBody.position.set(-15, 3, -15);
+  addBuilding(cBody, -15, -15, 3, 3);
   const cSteeple = box(1.5, 5, 1.5, 0xddd0b8); cSteeple.position.set(-15, 8.5, -15); addToScene(cSteeple);
   const cCross = box(0.2, 2, 0.2, 0xffd700, 0.9, 0.1); cCross.position.set(-15, 12, -15); addToScene(cCross);
   const cCross2 = box(1.2, 0.2, 0.2, 0xffd700, 0.9, 0.1); cCross2.position.set(-15, 12.5, -15); addToScene(cCross2);
@@ -2145,11 +2491,12 @@ function buildBavarianFarm() {
     hill.position.set(Math.cos(ang) * 35, hillH - 3, Math.sin(ang) * 35);
     addToScene(hill);
   }
-  // Trees
+  // Trees (solid trunks)
   for (let i = 0; i < 15; i++) {
     const tx = (Math.random() - 0.5) * 50, tz = (Math.random() - 0.5) * 50;
     if (Math.abs(tx) < 5 && Math.abs(tz) < 5) continue;
-    const trunk = cylinder(0.2, 0.3, 2, 0x6b4423); trunk.position.set(tx, 1, tz); addToScene(trunk);
+    const trunk = cylinder(0.2, 0.3, 2, 0x6b4423); trunk.position.set(tx, 1, tz);
+    addBuilding(trunk, tx, tz, 0.6, 0.6); // Tree collision
     const leaves = sphere(1.5, 0x2a7020); leaves.position.set(tx, 3, tz); addToScene(leaves);
   }
   // Wildflowers (tiny colored spheres)
@@ -2168,8 +2515,9 @@ function buildBedroomScene() {
   const windowLight = new THREE.DirectionalLight(0xffeedd, 0.8); windowLight.position.set(5, 8, -5); addToScene(windowLight);
   // Floor
   const floor = box(14, 0.1, 14, 0x5a3a1a); floor.position.y = -0.05; addToScene(floor);
-  // Bed
-  const bedFrame = box(3.5, 0.4, 2, 0x6b4423, 0, 0.9); bedFrame.position.set(0, 0.2, -1); addToScene(bedFrame);
+  // Bed (solid)
+  const bedFrame = box(3.5, 0.4, 2, 0x6b4423, 0, 0.9); bedFrame.position.set(0, 0.2, -1);
+  addBuilding(bedFrame, 0, -1, 3.5, 2);
   const mattress = box(3.2, 0.3, 1.8, 0xeeeedd); mattress.position.set(0, 0.5, -1); addToScene(mattress);
   const pillow = box(1.2, 0.2, 0.8, 0xffffff); pillow.position.set(-0.8, 0.72, -1.8); addToScene(pillow);
   const headboard = box(3.5, 2, 0.15, 0x5a3210); headboard.position.set(0, 1.2, -2.1); addToScene(headboard);
@@ -2181,8 +2529,9 @@ function buildBedroomScene() {
   // Window
   const windowFrame = box(1.8, 2.2, 0.12, 0x6b4423); windowFrame.position.set(3, 1.5, -4); addToScene(windowFrame);
   const windowGlass = box(1.4, 1.8, 0.05, 0xaaddff); windowGlass.material = new THREE.MeshStandardMaterial({color:0xaaddff,transparent:true,opacity:0.4,emissive:0xaaddff,emissiveIntensity:0.2}); windowGlass.position.set(3, 1.5, -3.93); addToScene(windowGlass);
-  // Prayer table
-  const table = box(1.2, 0.8, 0.8, 0x6b4423); table.position.set(-2.5, 0.4, -0.5); addToScene(table);
+  // Prayer table (solid)
+  const table = box(1.2, 0.8, 0.8, 0x6b4423); table.position.set(-2.5, 0.4, -0.5);
+  addBuilding(table, -2.5, -0.5, 1.2, 0.8);
   const candle3d = cylinder(0.06, 0.07, 0.5, 0xffffee); candle3d.position.set(-2.5, 0.9, -0.5); addToScene(candle3d);
   const flame = sphere(0.08, 0xff8822); flame.material = new THREE.MeshStandardMaterial({color:0xff8822,emissive:0xff5500,emissiveIntensity:1}); flame.position.set(-2.5, 1.2, -0.5); addToScene(flame);
   const rosary = box(0.05, 0.05, 0.5, 0x333388); rosary.position.set(-2.1, 0.82, -0.5); addToScene(rosary);
@@ -2202,13 +2551,15 @@ function buildVillageScene() {
       const h = 3 + Math.random() * 3;
       const bld = box(3.5, h, 3, bColors[Math.floor(Math.random()*bColors.length)]);
       bld.position.set(side * 5, h/2, i * 5.5);
-      bld.castShadow = true; addToScene(bld);
+      bld.castShadow = true;
+      addBuilding(bld, side * 5, i * 5.5, 3.5, 3); // Village building collision
       const bRoof = new THREE.Mesh(new THREE.ConeGeometry(2.8, 2, 4), new THREE.MeshStandardMaterial({color:0x7a3a1a,roughness:1}));
       bRoof.position.set(side * 5, h + 1, i * 5.5); bRoof.rotation.y = Math.PI/4; addToScene(bRoof);
     }
   }
-  // Well
-  const wellBase = cylinder(0.8, 0.8, 0.7, 0xa09070); wellBase.position.set(8, 0.35, 0); addToScene(wellBase);
+  // Well (solid)
+  const wellBase = cylinder(0.8, 0.8, 0.7, 0xa09070); wellBase.position.set(8, 0.35, 0);
+  addBuilding(wellBase, 8, 0, 1.6, 1.6);
   const wellPosts = cylinder(0.1, 0.1, 1.5, 0x6b4423); wellPosts.position.set(8, 1.1, 0); addToScene(wellPosts);
   // Church at end of street
   const cBody = box(5, 7, 5, 0xf0e0c8); cBody.position.set(0, 3.5, -20); addToScene(cBody);
@@ -2292,18 +2643,16 @@ function spawnCollectibles(count, color, label, isCommunion) {
   entities.forEach(e => { if (e.obj) scene.remove(e.obj); });
   entities = [];
   for (let i = 0; i < count; i++) {
-    const angle = (i / count) * Math.PI * 2;
-    const r = 3.5 + Math.random() * 5;
-    const x = Math.cos(angle) * r, z = Math.sin(angle) * r;
+    const pos = findValidSpawnPosition(18, 3.5);
     let objGroup;
     let itemType = 'collectible';
     if (isCommunion) {
       // Alternate: host for even indices, chalice for odd
       if (i % 2 === 0) {
-        objGroup = createCommunionHost(x, z);
+        objGroup = createCommunionHost(pos.x, pos.z);
         itemType = 'host';
       } else {
-        objGroup = createCommunionWine(x, z);
+        objGroup = createCommunionWine(pos.x, pos.z);
         itemType = 'chalice';
       }
     } else {
@@ -2314,7 +2663,7 @@ function spawnCollectibles(count, color, label, isCommunion) {
       orb.position.y = 0.5; g.add(orb);
       const light = new THREE.PointLight(color, 1.2, 3);
       light.position.y = 0.5; g.add(light);
-      g.position.set(x, 0, z);
+      g.position.set(pos.x, 0, pos.z);
       scene.add(g);
       objGroup = g;
     }
@@ -2330,9 +2679,8 @@ function spawnSickForPrayer(count) {
   entities = [];
   const sickColors = [0x3355aa, 0x885533, 0x553388, 0x336655, 0x883333];
   for (let i = 0; i < count; i++) {
-    const angle = (i / count) * Math.PI * 2;
-    const r = 3.5 + Math.random() * 5;
-    const x = Math.cos(angle) * r, z = Math.sin(angle) * r;
+    const pos = findValidSpawnPosition(18, 3.5);
+    const angle = Math.atan2(pos.z, pos.x); // Calculate angle from position for rotation
     const g = new THREE.Group();
 
     // Body lying down (horizontal)
@@ -2363,7 +2711,7 @@ function spawnSickForPrayer(count) {
     crossH.material = new THREE.MeshStandardMaterial({color:0xffd700,emissive:0xffd700,emissiveIntensity:0.7});
     crossH.position.y = 1.2; g.add(crossH);
 
-    g.position.set(x, 0, z);
+    g.position.set(pos.x, 0, pos.z);
     scene.add(g);
     entities.push({obj: g, collected: false, type: 'sick_person', rotTimer: 0, healed: false});
   }
@@ -2377,10 +2725,9 @@ function spawnPilgrims(count) {
   entities = [];
   const pilgrimColors = [0x3355aa, 0x553388, 0x338855, 0x885533];
   for (let i = 0; i < count; i++) {
-    const angle = (i / count) * Math.PI * 2;
-    const r = 5 + Math.random() * 4;
+    const pos = findValidSpawnPosition(15, 5);
     const char = buildCharacter(pilgrimColors[i % 4], 0xffcba4);
-    char.position.set(Math.cos(angle)*r, 0, Math.sin(angle)*r);
+    char.position.set(pos.x, 0, pos.z);
     // Add question mark indicator
     const indicator = sphere(0.15, 0xffd700);
     indicator.material = new THREE.MeshStandardMaterial({color:0xffd700,emissive:0xffd700,emissiveIntensity:0.8});
@@ -3247,5 +3594,6 @@ document.getElementById('actionBtn').onclick = () => {
   else triggerAction();
 };
 </script>
+
 </body>
 </html>
