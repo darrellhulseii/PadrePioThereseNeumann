@@ -1487,26 +1487,13 @@ function placePlayer(x,z,isPadre){
 
 // ── CAMERA ───────────────────────────────────────────────
 // Camera offset and angle for flight mode
-let flightCamAngle = 0; // Horizontal rotation around player
+let flightCamAngle = 0; // Horizontal rotation - auto-follows player
 let flightCamPitch = 0.3; // Vertical angle (0 = level, positive = looking down)
 
 function updateCamera(){
   if(GS.subMode==='flight'){
-    // Right joystick / arrow keys control camera rotation
-    if(cameraInput.left || keys['j']){
-      flightCamAngle -= 0.04;
-    }
-    if(cameraInput.right || keys['l']){
-      flightCamAngle += 0.04;
-    }
-    if(cameraInput.up || keys['i']){
-      flightCamPitch = Math.max(-0.5, flightCamPitch - 0.02);
-    }
-    if(cameraInput.down || keys['k']){
-      flightCamPitch = Math.min(1.0, flightCamPitch + 0.02);
-    }
-    
-    // Position camera around player using angle
+    // Camera automatically follows behind player at current angle
+    // No manual camera control - camera angle set by left/right movement
     const camDist = 10;
     const camHeight = 3 + flightCamPitch * 5;
     const px = player.obj ? player.obj.position.x : player.x;
@@ -1717,10 +1704,10 @@ function initFlightMode(){
   GS.subMode='flight';GS.planesRedirected=0;
   spawnForStage();
   document.getElementById('actionBtn').classList.remove('visible');
-  document.getElementById('cameraJoy').classList.add('visible'); // Show camera joystick
+  // Single joystick only - no camera joystick needed
   updateHUD();
   showStageTitle('✈ Soaring Over Italy');
-  showDialog(`<h3>${ppQuotes[6]}</h3><br><strong>LEFT STICK (Movement):</strong><br>↑ Fly forward (camera direction)<br>↓ Fly backward (reverse)<br>← Fly left (strafe)<br>→ Fly right (strafe)<br><br><strong>RIGHT STICK (Camera):</strong><br>Rotate view around Padre Pio<br><br>Movement follows camera direction!<br><br><span class="t-btn" onclick="hideDialog()">▶ Begin</span>`,0);
+  showDialog('<h3>'+ppQuotes[6]+'</h3><br><strong>SINGLE JOYSTICK FLIGHT:</strong><br>↑ Fly forward<br>↓ Fly backward<br>← Turn left while moving left<br>→ Turn right while moving right<br><br>Get close to planes to redirect!<br><br><span class="t-btn" onclick="hideDialog()">▶ Begin</span>',0);
 }
 
 const raycaster=new THREE.Raycaster();
@@ -1749,9 +1736,114 @@ function checkPlaneTap(cx,cy){
 }
 
 function flightComplete(){
-  document.getElementById('cameraJoy').classList.remove('visible'); // Hide camera joystick
   const d=ppPrayers.planesComplete;
-  showDialog(`<h3>✈ All planes redirected!</h3><em>${d.quote}</em><br><br>${d.prayer}<br><br><span class="t-btn" onclick="hideDialog();initHealingMode()">✝ Continue to Healing ▶</span>`,0);
+  showDialog('<h3>✈ All planes redirected!</h3><em>'+d.quote+'</em><br><br>'+d.prayer+'<br><br><span class="t-btn" onclick="hideDialog();initGuardianAngelMode()">✝ Continue to Guardian Angels ▶</span>',0);
+}
+
+// ── GUARDIAN ANGEL MODE ───────────────────────────────────
+// Historical accounts of Padre Pio speaking with guardian angels
+const guardianAngelStories = [
+  {person:'Young Woman',story:'A young woman came to Padre Pio but could not get close due to crowds. Padre Pio said, "Send your guardian angel to me." The next morning, Padre Pio told her confessor, "That young woman obeyed me. Her angel came and woke me up!"'},
+  {person:'Priest Friend',story:'Padre Pio wrote letters to his spiritual director saying, "I am sending you my guardian angel." The recipient testified he would smell the perfume of roses when the messages arrived.'},
+  {person:'Sick Child',story:'A mother asked Padre Pio to pray for her sick child. He replied, "I already know about it. Your guardian angel told me last night."'},
+  {person:'Distant Benefactor',story:'A benefactor in America wanted to help Padre Pio but could not visit. Padre Pio said, "Send your angel." The man testified he sent his angel in prayer, and Padre Pio later confirmed, "Your angel visited me three times this week."'},
+  {person:'Confused Pilgrim',story:'A pilgrim was lost trying to find the monastery. He prayed to his guardian angel. Moments later, a young man appeared and guided him directly to Padre Pio, then vanished.'}
+];
+
+function initGuardianAngelMode(){
+  clearScene();buildChurchInterior();
+  placePlayer(-4,0,true); // Padre Pio in confessional
+  GS.subMode='guardianangel';
+  GS.angelsHelped=0;
+  document.getElementById('actionBtn').classList.add('visible');
+  document.getElementById('actionBtn').textContent='👼 LISTEN';
+  updateHUD();
+  showStageTitle('👼 Ministering with Guardian Angels');
+  showDialog('<h3>Padre Pio and the Guardian Angels</h3><br>"I have made a pact with my guardian angel: at night he prays and I sleep, during the day I work and he stands watch." - Padre Pio<br><br>Listen to the guardian angels and help those they represent!<br><br><span class="t-btn" onclick="hideDialog();spawnGuardianAngel()">▶ Begin</span>',0);
+}
+
+function spawnGuardianAngel(){
+  if(GS.angelsHelped>=5){
+    guardianAngelComplete();
+    return;
+  }
+  
+  const story = guardianAngelStories[GS.angelsHelped];
+  const angel = buildGuardianAngel();
+  angel.position.set(2,0,0);
+  scene.add(angel);
+  
+  // Angel floats toward Padre Pio
+  let t=0;
+  const approach=setInterval(()=>{
+    t+=0.02;
+    angel.position.x=2-t*6;
+    angel.position.y=Math.sin(t*4)*0.15+0.5;
+    if(t>=0.5){
+      clearInterval(approach);
+      showDialog('<h3>Guardian Angel Message</h3><br><strong>Representing:</strong> '+story.person+'<br><br><em>'+story.story+'</em><br><br><span class="t-btn" onclick="(function(){GS.angelsHelped++;GS.score+=100;scene.children.find(c=>c.userData&&c.userData.isAngel)&&scene.remove(scene.children.find(c=>c.userData&&c.userData.isAngel));spawnParticles(-4,2,0,0xffd700,12);updateHUD();hideDialog();spawnGuardianAngel();})()">✝ Acknowledge & Pray</span>',0);
+    }
+  },30);
+}
+
+function buildGuardianAngel(){
+  const g=new THREE.Group();
+  g.userData.isAngel=true;
+  
+  // Glowing white robes
+  const body=box(0.6,1.0,0.4,0xffffff,0.3,0.3);
+  body.material.emissive=new THREE.Color(0xffffee);
+  body.material.emissiveIntensity=0.6;
+  body.position.y=0.5;
+  g.add(body);
+  
+  // Radiant head
+  const head=sphere(0.25,0xffffff,0.2,0.2);
+  head.material.emissive=new THREE.Color(0xffffee);
+  head.material.emissiveIntensity=0.8;
+  head.position.y=1.3;
+  g.add(head);
+  
+  // Wings (golden)
+  const wingGeo=new THREE.BoxGeometry(0.05,0.6,1.2);
+  const wingMat=new THREE.MeshStandardMaterial({
+    color:0xffd700,
+    emissive:0xffd700,
+    emissiveIntensity:0.7,
+    metalness:0.6
+  });
+  const leftWing=new THREE.Mesh(wingGeo,wingMat);
+  leftWing.position.set(-0.4,0.7,0);
+  leftWing.rotation.y=-0.3;
+  g.add(leftWing);
+  const rightWing=leftWing.clone();
+  rightWing.position.set(0.4,0.7,0);
+  rightWing.rotation.y=0.3;
+  g.add(rightWing);
+  
+  // Bright halo
+  const haloGeo=new THREE.TorusGeometry(0.35,0.04,12,48);
+  const haloMat=new THREE.MeshStandardMaterial({
+    color:0xffd700,
+    emissive:0xffd700,
+    emissiveIntensity:1.2,
+    metalness:0.9
+  });
+  const halo=new THREE.Mesh(haloGeo,haloMat);
+  halo.position.y=1.6;
+  halo.rotation.x=Math.PI*0.15;
+  g.add(halo);
+  
+  // Heavenly light
+  const light=new THREE.PointLight(0xffffee,2.5,4);
+  light.position.y=1.0;
+  g.add(light);
+  
+  return g;
+}
+
+function guardianAngelComplete(){
+  showDialog('<h3>👼 Guardian Angels Acknowledged!</h3><br><em>"The angels are our most faithful friends, because they are with us day and night, at every instant and in every place." - St. John Vianney</em><br><br><strong>Prayer:</strong><br><em>"Angel of God, my guardian dear, to whom God\'s love commits me here, ever this day be at my side, to light and guard, to rule and guide. Amen."</em><br><br><span class="t-btn" onclick="hideDialog();initHealingMode()">✝ Continue to Healing ▶</span>',0);
 }
 
 // ── HEALING ───────────────────────────────────────────────
@@ -2081,31 +2173,35 @@ function updateFlight(){
     interactBtn.classList.remove('visible');
   }
   
-  // ── OMNI-DIRECTIONAL CAMERA-RELATIVE FLIGHT CONTROLS ──
-  // Movement is relative to camera direction, not absolute world axes
-  let moveForward = 0, moveRight = 0;
-  if(isUp()) moveForward = 1;      // Push forward in camera direction
-  if(isDown()) moveForward = -1;   // Pull backward (reverse)
-  if(isLeft()) moveRight = -1;     // Strafe left
-  if(isRight()) moveRight = 1;     // Strafe right
+  // ── SIMPLIFIED SINGLE JOYSTICK FLIGHT ──
+  // Joystick controls BOTH movement and camera rotation
+  const speed = 0.5;
   
-  if(moveForward !== 0 || moveRight !== 0){
-    // Calculate movement vector relative to camera's horizontal rotation
-    const camAngle = flightCamAngle;
-    const speed = 0.45;
-    
-    // Forward/backward movement in camera's facing direction
-    player.obj.position.x += Math.sin(camAngle) * moveForward * speed;
-    player.obj.position.z += Math.cos(camAngle) * moveForward * speed;
-    
-    // Strafe left/right perpendicular to camera
-    player.obj.position.x += Math.cos(camAngle) * moveRight * speed;
-    player.obj.position.z -= Math.sin(camAngle) * moveRight * speed;
-    
-    // Orient player to movement direction
-    if(moveForward !== 0){
-      player.obj.rotation.y = camAngle + (moveForward < 0 ? Math.PI : 0);
-    }
+  // Forward/back = fly forward/backward
+  if(isUp()){
+    player.obj.position.x += Math.sin(flightCamAngle) * speed;
+    player.obj.position.z += Math.cos(flightCamAngle) * speed;
+  }
+  if(isDown()){
+    player.obj.position.x -= Math.sin(flightCamAngle) * speed;
+    player.obj.position.z -= Math.cos(flightCamAngle) * speed;
+  }
+  
+  // Left/right = rotate camera AND strafe
+  if(isLeft()){
+    flightCamAngle -= 0.05; // Rotate camera left
+    player.obj.position.x += Math.cos(flightCamAngle) * speed * 0.3; // Slight strafe
+    player.obj.position.z -= Math.sin(flightCamAngle) * speed * 0.3;
+  }
+  if(isRight()){
+    flightCamAngle += 0.05; // Rotate camera right
+    player.obj.position.x -= Math.cos(flightCamAngle) * speed * 0.3; // Slight strafe
+    player.obj.position.z += Math.sin(flightCamAngle) * speed * 0.3;
+  }
+  
+  // Orient player to movement direction
+  if(isUp() || isDown() || isLeft() || isRight()){
+    player.obj.rotation.y = flightCamAngle;
   }
   
   // Bounds
@@ -2426,6 +2522,26 @@ const thereseEvents = [
     scene: 'church',
     desc: 'On February 13, 1972, Archbishop Rudolf Graber of Regensburg officially opened the diocesan inquiry for the beatification of Therese Neumann, conferring on her the title "Servant of God." The cause was formally accepted by the Vatican\'s Congregation for the Causes of Saints. Thousands of testimonies were gathered, including eyewitness accounts from bishops, physicians, theologians, and ordinary faithful across six decades. Bishop Gerhard Ludwig Müller of Regensburg (later Cardinal Prefect of the Congregation for the Doctrine of the Faith) actively promoted her cause, stating: "The life of Therese Neumann is a powerful testimony to the reality of God, to the value of suffering united to Christ, and to the supernatural dimension of human existence. She deserves to be placed before the faithful as a model of Christian holiness." The process continues. The Church takes decades to investigate; the evidence assembled for Therese Neumann\'s beatification is extraordinary. As Fr. Hanley OFM wrote: "God has been patient in Konnersreuth. The Church will be patient too."',
     quote: '"The cause of Therese Neumann is a great gift to the contemporary Church. In an age that denies the supernatural, she is a living argument — or rather, a life-long argument — for the reality of God, the truth of the Gospel, and the power of mystical union with the Passion of Christ." — Cardinal Gerhard Ludwig Müller, Address to the Regensburg Diocese, 2012',
+    interactive: 'identify_fake',
+    task: 'Identify fake relics and impostor clergy — avoid the deceptions (dark/dim objects)'
+  },
+  {
+    year: 'Gift of Discernment',
+    title: 'Spotting the True Relics',
+    chapter: 'Mystical Discernment',
+    scene: 'church',
+    desc: 'Therese Neumann possessed the mystical gift of discernment. She could identify true relics and authentic clergy by a supernatural sense. Witnesses testified that when presented with fake relics, she would turn away in distress, but when given genuine relics of saints, she would enter ecstasy. Bishop Michael Buchberger noted: "She recognized true relics without being told. This cannot be explained naturally."',
+    quote: '"Her gift of discernment was extraordinary. She knew immediately if a relic was authentic or not." — Fr. Josef Naber, testimony, 1935',
+    interactive: 'identify_real',
+    task: 'Collect the genuine glowing relics and approach real clergy (bright golden glow)'
+  },
+  {
+    year: 'Final Mission',
+    title: 'Stand Before the Altar',
+    chapter: 'Servant of God',
+    scene: 'church',
+    desc: 'Complete your journey by standing before the altar in prayer.',
+    quote: '"The life of Therese Neumann is a gift to the Church." — Cardinal Müller, 2012',
     interactive: 'final',
     task: 'Stand before the altar and give thanks — press PRAY to complete Therese\'s journey'
   }
@@ -2780,6 +2896,80 @@ function spawnRelics() {
   }
 }
 
+// ── FAKE RELIC/CLERGY DETECTION ───────────────────────
+function spawnFakeRelicsAndClergy(){
+  entities.forEach(e => { if (e.obj) scene.remove(e.obj); });
+  entities = [];
+  TS.fakesAvoided = 0;
+  TS.fakeTarget = 6; // Must avoid 6 fakes
+  
+  for(let i=0; i<6; i++){
+    const pos = findValidSpawnPosition(15, 4);
+    const isCler = i % 2 === 0; // Alternate clergy and relics
+    
+    if(isCler){
+      // Fake clergy member (dark, suspicious)
+      const fake = buildCharacter(0x2a2a2a, 0x8a7a6a);
+      fake.position.set(pos.x, 0, pos.z);
+      scene.add(fake);
+      // Dim dark light
+      const light = new THREE.PointLight(0x442222, 0.3, 2);
+      light.position.set(pos.x, 1, pos.z);
+      scene.add(light);
+      sceneObjects.push(light);
+      entities.push({obj:fake, type:'fake_clergy', collected:false});
+    } else {
+      // Fake relic (dark, dim)
+      const fakeRel = box(0.3, 0.3, 0.3, 0x4a4a4a, 0.1, 0.9);
+      fakeRel.position.set(pos.x, 0.3, pos.z);
+      scene.add(fakeRel);
+      const light = new THREE.PointLight(0x442222, 0.3, 2);
+      light.position.copy(fakeRel.position); light.position.y += 0.4;
+      scene.add(light);
+      sceneObjects.push(light);
+      entities.push({obj:fakeRel, type:'fake_relic', collected:false});
+    }
+  }
+}
+
+// ── REAL RELIC/CLERGY IDENTIFICATION ─────────────────
+function spawnRealRelicsAndClergy(){
+  entities.forEach(e => { if (e.obj) scene.remove(e.obj); });
+  entities = [];
+  TS.collectCount = 0;
+  TS.collectTarget = 5; // Must collect 5 real ones
+  
+  for(let i=0; i<5; i++){
+    const pos = findValidSpawnPosition(15, 4);
+    const isCler = i % 2 === 0;
+    
+    if(isCler){
+      // Real clergy (bright golden glow)
+      const real = buildCharacter(0x6b3a1f, 0xffe4c4);
+      real.position.set(pos.x, 0, pos.z);
+      scene.add(real);
+      // BRIGHT golden light
+      const light = new THREE.PointLight(0xffd700, 2.5, 4);
+      light.position.set(pos.x, 1, pos.z);
+      scene.add(light);
+      sceneObjects.push(light);
+      entities.push({obj:real, type:'real_clergy', collected:false});
+    } else {
+      // Real relic (VERY bright golden glow)
+      const realRel = box(0.35, 0.35, 0.35, 0xffd700, 0.8, 0.2);
+      realRel.material.emissive = new THREE.Color(0xffd700);
+      realRel.material.emissiveIntensity = 1.2;
+      realRel.position.set(pos.x, 0.35, pos.z);
+      scene.add(realRel);
+      const light = new THREE.PointLight(0xffd700, 3.0, 5);
+      light.position.copy(realRel.position); light.position.y += 0.5;
+      scene.add(light);
+      sceneObjects.push(light);
+      entities.push({obj:realRel, type:'real_relic', collected:false, rotTimer:0});
+    }
+  }
+}
+
 // ── THERESE ECSTASY EFFECT ─────────────────────────────
 let ecstasyActive = false;
 let ecstasyTimer = 0;
@@ -2900,6 +3090,10 @@ function showThereseEvent(index) {
     spawnShadows();
   } else if (ev.interactive === 'discern') {
     spawnRelics();
+  } else if (ev.interactive === 'identify_fake') {
+    spawnFakeRelicsAndClergy();
+  } else if (ev.interactive === 'identify_real') {
+    spawnRealRelicsAndClergy();
   } else if (ev.interactive === 'pray' && ev.title === "Therese's Teachings & Counsel") {
     spawnPilgrims(4);
   }
@@ -3038,6 +3232,44 @@ function checkThereseTask() {
     const distGoal = Math.sqrt((player.x-10)**2 + (player.z-10)**2);
     if (distGoal < 2) completeThereseTask();
 
+  // ── Identify fake relics/clergy (AVOID them) ───────────
+  } else if (ev.interactive === 'identify_fake') {
+    entities.forEach(e => {
+      if ((e.type === 'fake_relic' || e.type === 'fake_clergy') && !e.collected) {
+        const dx = e.obj.position.x - player.x;
+        const dz = e.obj.position.z - player.z;
+        const dist = Math.sqrt(dx*dx + dz*dz);
+        if (dist < 1.5) {
+          // FAILED - touched a fake
+          e.collected = true;
+          showDialog('<h3>⚠ Fake Detected!</h3><br>Therese sensed deception. Avoid dark/dim objects and clergy!<br><br><span class="t-btn" onclick="hideDialog();loadThereseEvent(TS.eventIndex)">Try Again</span>',0);
+        }
+      }
+    });
+    // Check if player avoided all fakes and reached safe area
+    const allAvoided = entities.filter(e=>(e.type==='fake_relic'||e.type==='fake_clergy')&&!e.collected).length === 6;
+    if (allAvoided && Math.abs(player.x) < 2 && Math.abs(player.z) < 2) {
+      completeThereseTask();
+    }
+
+  // ── Identify real relics/clergy (COLLECT them) ─────────
+  } else if (ev.interactive === 'identify_real') {
+    entities.forEach(e => {
+      if ((e.type === 'real_relic' || e.type === 'real_clergy') && !e.collected) {
+        const dx = e.obj.position.x - player.x;
+        const dz = e.obj.position.z - player.z;
+        if (Math.sqrt(dx*dx + dz*dz) < 2.0) {
+          e.collected = true;
+          const pos = e.obj.position.clone();
+          spawnParticles(pos.x, 1, pos.z, 0xffd700, 20);
+          playMiracleSound();
+          TS.collectCount++;
+          document.getElementById('hGoal').textContent = 'Genuine: '+TS.collectCount+'/'+TS.collectTarget;
+          if (TS.collectCount >= TS.collectTarget) completeThereseTask();
+        }
+      }
+    });
+
   // ── Discern task (approach + press PRAY) ──────────────
   } else if (ev.interactive === 'discern') {
     // Proximity highlight: pulse the nearest relic brighter when player is close
@@ -3072,7 +3304,7 @@ function checkThereseTask() {
 
   // ── Animate all collectibles / relics ──────────────────
   entities.forEach(e => {
-    if ((e.type === 'collectible' || e.type === 'relic') && !e.collected) {
+    if ((e.type === 'collectible' || e.type === 'relic' || e.type === 'real_relic') && !e.collected) {
       e.rotTimer = (e.rotTimer||0) + 0.04;
       e.obj.rotation.y = e.rotTimer;
       e.obj.position.y = Math.sin(e.rotTimer) * 0.12 + 0.4;
