@@ -200,6 +200,13 @@ function startHymnMusic(){
   try{
     const ac=getAudio();
     if(ac.state==='suspended')ac.resume();
+    
+    // CRITICAL: Validate audio context timing before proceeding
+    if(!ac || !isFinite(ac.currentTime) || ac.currentTime < 0){
+      console.warn('Audio context not ready, skipping hymn music');
+      return;
+    }
+    
     musicPlaying=true;
     currentMusicMode='hymn';
 
@@ -242,58 +249,75 @@ function startHymnMusic(){
 
     // ── CHOIR VOICE BUILDER ───────────────────────────────
     function voice(freq,t,dur,vol,type){
+      // Validate all inputs before using Web Audio API
+      if(!isFinite(freq) || !isFinite(t) || !isFinite(dur) || !isFinite(vol)) return;
+      if(freq <= 0 || dur <= 0 || vol <= 0) return;
       if(t<ac.currentTime-0.1)return;
-      const o1=ac.createOscillator(),o2=ac.createOscillator(),o3=ac.createOscillator();
-      const g1=ac.createGain(),g2=ac.createGain(),g3=ac.createGain();
-      const flt=ac.createBiquadFilter(),env=ac.createGain();
+      
+      try {
+        const o1=ac.createOscillator(),o2=ac.createOscillator(),o3=ac.createOscillator();
+        const g1=ac.createGain(),g2=ac.createGain(),g3=ac.createGain();
+        const flt=ac.createBiquadFilter(),env=ac.createGain();
 
-      if(type==='S'){
-        o1.type='sine'; o2.type='sine'; o3.type='sine';
-        o1.frequency.value=freq; o2.frequency.value=freq*1.002; o3.frequency.value=freq*2;
-        g1.gain.value=0.60; g2.gain.value=0.27; g3.gain.value=0.13;
-        flt.type='peaking'; flt.frequency.value=900; flt.gain.value=6; flt.Q.value=1.4;
-      } else if(type==='A'){
-        o1.type='sine'; o2.type='triangle'; o3.type='sine';
-        o1.frequency.value=freq; o2.frequency.value=freq*1.003; o3.frequency.value=freq*1.5;
-        g1.gain.value=0.58; g2.gain.value=0.30; g3.gain.value=0.12;
-        flt.type='peaking'; flt.frequency.value=550; flt.gain.value=5; flt.Q.value=1.7;
-      } else if(type==='T'){
-        o1.type='triangle'; o2.type='sine'; o3.type='sine';
-        o1.frequency.value=freq; o2.frequency.value=freq*0.999; o3.frequency.value=freq*2;
-        g1.gain.value=0.57; g2.gain.value=0.29; g3.gain.value=0.14;
-        flt.type='peaking'; flt.frequency.value=380; flt.gain.value=4; flt.Q.value=1.9;
-      } else { // Bass
-        o1.type='sine'; o2.type='sine'; o3.type='triangle';
-        o1.frequency.value=freq; o2.frequency.value=freq*1.001; o3.frequency.value=freq*3;
-        g1.gain.value=0.54; g2.gain.value=0.31; g3.gain.value=0.15;
-        flt.type='lowshelf'; flt.frequency.value=220; flt.gain.value=7;
+        if(type==='S'){
+          o1.type='sine'; o2.type='sine'; o3.type='sine';
+          o1.frequency.setValueAtTime(freq,t);
+          o2.frequency.setValueAtTime(freq*1.002,t);
+          o3.frequency.setValueAtTime(freq*2,t);
+          g1.gain.value=0.60; g2.gain.value=0.27; g3.gain.value=0.13;
+          flt.type='peaking'; flt.frequency.value=900; flt.gain.value=6; flt.Q.value=1.4;
+        } else if(type==='A'){
+          o1.type='sine'; o2.type='triangle'; o3.type='sine';
+          o1.frequency.setValueAtTime(freq,t);
+          o2.frequency.setValueAtTime(freq*1.003,t);
+          o3.frequency.setValueAtTime(freq*1.5,t);
+          g1.gain.value=0.58; g2.gain.value=0.30; g3.gain.value=0.12;
+          flt.type='peaking'; flt.frequency.value=550; flt.gain.value=5; flt.Q.value=1.7;
+        } else if(type==='T'){
+          o1.type='triangle'; o2.type='sine'; o3.type='sine';
+          o1.frequency.setValueAtTime(freq,t);
+          o2.frequency.setValueAtTime(freq*0.999,t);
+          o3.frequency.setValueAtTime(freq*2,t);
+          g1.gain.value=0.57; g2.gain.value=0.29; g3.gain.value=0.14;
+          flt.type='peaking'; flt.frequency.value=380; flt.gain.value=4; flt.Q.value=1.9;
+        } else { // Bass
+          o1.type='sine'; o2.type='sine'; o3.type='triangle';
+          o1.frequency.setValueAtTime(freq,t);
+          o2.frequency.setValueAtTime(freq*1.001,t);
+          o3.frequency.setValueAtTime(freq*3,t);
+          g1.gain.value=0.54; g2.gain.value=0.31; g3.gain.value=0.15;
+          flt.type='lowshelf'; flt.frequency.value=220; flt.gain.value=7;
+        }
+
+        // Vibrato
+        const vRate=(type==='S')?5.3:(type==='A')?5.0:(type==='T')?4.7:4.2;
+        const vib=ac.createOscillator(),vg=ac.createGain();
+        vib.type='sine'; vib.frequency.setValueAtTime(vRate,t);
+        vg.gain.value=0;
+        vib.connect(vg); vg.connect(o1.frequency); vg.connect(o2.frequency);
+        const vStart=t+dur*0.35;
+        vg.gain.setValueAtTime(0,vStart);
+        vg.gain.linearRampToValueAtTime(freq*0.003,vStart+0.25);
+        vib.start(t); vib.stop(t+dur+0.1);
+        musicNodes.push(vib,vg);
+
+        o1.connect(g1); o2.connect(g2); o3.connect(g3);
+        g1.connect(flt); g2.connect(flt); g3.connect(flt);
+
+        const att=Math.min(dur*0.11,0.20);
+        const rel=Math.min(dur*0.17,0.28);
+        env.gain.setValueAtTime(0.001,t);
+        env.gain.linearRampToValueAtTime(vol,t+att);
+        env.gain.setValueAtTime(vol*0.88,t+dur-rel);
+        env.gain.linearRampToValueAtTime(0.001,t+dur);
+        flt.connect(env); env.connect(master);
+
+        [o1,o2,o3].forEach(o=>{ o.start(t); o.stop(t+dur+0.05); });
+        musicNodes.push(o1,o2,o3,g1,g2,g3,flt,env);
+      } catch(err) {
+        // Silently fail individual notes to prevent cascade errors
+        return;
       }
-
-      // Vibrato
-      const vRate=(type==='S')?5.3:(type==='A')?5.0:(type==='T')?4.7:4.2;
-      const vib=ac.createOscillator(),vg=ac.createGain();
-      vib.type='sine'; vib.frequency.value=vRate;
-      vg.gain.value=0;
-      vib.connect(vg); vg.connect(o1.frequency); vg.connect(o2.frequency);
-      const vStart=t+dur*0.35;
-      vg.gain.setValueAtTime(0,vStart);
-      vg.gain.linearRampToValueAtTime(freq*0.003,vStart+0.25);
-      vib.start(t); vib.stop(t+dur+0.1);
-      musicNodes.push(vib,vg);
-
-      o1.connect(g1); o2.connect(g2); o3.connect(g3);
-      g1.connect(flt); g2.connect(flt); g3.connect(flt);
-
-      const att=Math.min(dur*0.11,0.20);
-      const rel=Math.min(dur*0.17,0.28);
-      env.gain.setValueAtTime(0.001,t);
-      env.gain.linearRampToValueAtTime(vol,t+att);
-      env.gain.setValueAtTime(vol*0.88,t+dur-rel);
-      env.gain.linearRampToValueAtTime(0.001,t+dur);
-      flt.connect(env); env.connect(master);
-
-      [o1,o2,o3].forEach(o=>{ o.start(t); o.stop(t+dur+0.05); });
-      musicNodes.push(o1,o2,o3,g1,g2,g3,flt,env);
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -529,8 +553,13 @@ function startHymnMusic(){
       types.forEach((type, ti) => {
         let t = startT;
         hymn[type].forEach(note => {
-          voice(note.n, t, note.d*0.90, vols[ti], type);
-          t += note.d;
+          // Validate note values to prevent non-finite errors
+          if(note && typeof note.n === 'number' && isFinite(note.n) && 
+             typeof note.d === 'number' && isFinite(note.d) &&
+             note.n > 0 && note.d > 0) {
+            voice(note.n, t, note.d*0.90, vols[ti], type);
+            t += note.d;
+          }
         });
       });
 
@@ -539,7 +568,13 @@ function startHymnMusic(){
 
       // Schedule next hymn after this one finishes (+ 2s gap)
       const nextStart = startT + hymn.duration + 2.0;
-      const delay = Math.max((nextStart - ac.currentTime) * 1000, 100);
+      const timeDiff = nextStart - ac.currentTime;
+      
+      // Validate timing before setTimeout
+      if(!isFinite(timeDiff) || timeDiff < 0) return;
+      
+      const delay = Math.max(timeDiff * 1000, 100);
+      if(!isFinite(delay)) return;
 
       const timer = setTimeout(() => {
         if(musicPlaying && musicEnabled) scheduleHymn(nextStart);
@@ -547,7 +582,11 @@ function startHymnMusic(){
       musicNodes.push({disconnect: () => clearTimeout(timer)});
     }
 
-    scheduleHymn(ac.currentTime + 0.8);
+    // Validate start time
+    const startTime = ac.currentTime + 0.8;
+    if(isFinite(startTime) && startTime > 0) {
+      scheduleHymn(startTime);
+    }
 
   }catch(e){console.warn('Hymn audio failed:',e);}
 }
