@@ -1,5 +1,4 @@
 <!DOCTYPE html>
-
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -120,7 +119,6 @@
 <button id="musicBtn" onclick="toggleMusic()" title="Toggle Music">♪</button>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-
 <script>
 // ═══════════════════════════════════════════════════════
 //  GIUSEPPE'S JOURNEY v2 — 3D + Touch D-Pad Edition
@@ -194,6 +192,120 @@ function getAudio(){
 //     "Jesu, Joy of Man's Desiring" — public domain
 //     G-A-B-D-B-A-G bass line arpeggiation
 // ═══════════════════════════════════════════════════════
+
+// ── PADRE PIO SACRED CHANT MUSIC ─────────────────────────
+// Gregorian-style plainchant for Padre Pio mode.
+// Pentatonic modal melody in Dorian mode — ancient sacred character.
+function startSacredMusic(){
+  if(!musicEnabled||musicPlaying)return;
+  try{
+    const ac=getAudio();
+    if(!ac||!isFinite(ac.currentTime)||ac.currentTime<0)return;
+    if(ac.state==='suspended')ac.resume();
+    musicPlaying=true;
+    currentMusicMode='sacred';
+
+    const master=ac.createGain();
+    master.gain.value=0.28;
+    const rev=ac.createConvolver();
+    // Simple impulse for reverb (chapel-like)
+    const impLen=ac.sampleRate*2.5;
+    const imp=ac.createBuffer(2,impLen,ac.sampleRate);
+    for(let ch=0;ch<2;ch++){
+      const d=imp.getChannelData(ch);
+      for(let i=0;i<impLen;i++) d[i]=(Math.random()*2-1)*Math.pow(1-i/impLen,2.2);
+    }
+    rev.buffer=imp;
+    const revGain=ac.createGain(); revGain.gain.value=0.35;
+    master.connect(revGain); revGain.connect(rev); rev.connect(ac.destination);
+    master.connect(ac.destination);
+    musicNodes.push(master,rev,revGain);
+
+    // Dorian mode scale: D E F G A B C D (church-like)
+    const D3=146.83,E3=164.81,F3=174.61,G3=196.00,A3=220.00,Bb3=233.08,C4=261.63,D4=293.66;
+    const E4=329.63,F4=349.23,G4=392.00,A4=440.00;
+
+    // Chant melody — 16-note phrase, loops
+    const melody=[
+      [D4,1.4],[E4,0.7],[F4,0.7],[G4,1.4],[E4,0.7],[D4,1.4],
+      [A4,1.4],[G4,0.7],[F4,0.7],[E4,1.4],[D4,0.7],[E4,0.7],
+      [G4,1.4],[F4,0.7],[E4,0.7],[D4,2.1]
+    ];
+    const phraseDur=melody.reduce((s,[,d])=>s+d,0)+1.5;
+
+    function playPhrase(startT){
+      if(!musicPlaying)return;
+      let t=startT;
+      melody.forEach(([freq,dur])=>{
+        if(!isFinite(freq)||!isFinite(t)||!isFinite(dur))return;
+        try{
+          const o=ac.createOscillator();
+          const g=ac.createGain();
+          o.type='sine';
+          o.frequency.setValueAtTime(freq,t);
+          // Slight vibrato for plainchant feel
+          const vib=ac.createOscillator(); const vg=ac.createGain();
+          vib.type='sine'; vib.frequency.setValueAtTime(4.8,t);
+          vg.gain.setValueAtTime(0,t);
+          vg.gain.linearRampToValueAtTime(freq*0.004,t+dur*0.4);
+          vib.connect(vg); vg.connect(o.frequency);
+          vib.start(t); vib.stop(t+dur+0.05);
+          // Envelope
+          g.gain.setValueAtTime(0.001,t);
+          g.gain.linearRampToValueAtTime(0.7,t+Math.min(dur*0.15,0.2));
+          g.gain.setValueAtTime(0.55,t+dur-0.12);
+          g.gain.linearRampToValueAtTime(0.001,t+dur);
+          o.connect(g); g.connect(master);
+          o.start(t); o.stop(t+dur+0.05);
+          musicNodes.push(o,g,vib,vg);
+        }catch(e){ /* skip bad note */ }
+        t+=dur;
+      });
+      // Drone bass (D2)
+      try{
+        const drone=ac.createOscillator(); const dg=ac.createGain();
+        drone.type='sine'; drone.frequency.setValueAtTime(D3,startT);
+        dg.gain.setValueAtTime(0.001,startT);
+        dg.gain.linearRampToValueAtTime(0.18,startT+0.5);
+        dg.gain.setValueAtTime(0.18,startT+phraseDur-0.8);
+        dg.gain.linearRampToValueAtTime(0.001,startT+phraseDur);
+        drone.connect(dg); dg.connect(master);
+        drone.start(startT); drone.stop(startT+phraseDur);
+        musicNodes.push(drone,dg);
+      }catch(e){}
+      // Schedule next phrase
+      const nextT=startT+phraseDur;
+      const delay=(nextT-ac.currentTime)*1000;
+      if(delay>0){
+        setTimeout(()=>{ if(musicPlaying&&currentMusicMode==='sacred') playPhrase(ac.currentTime+0.05); },delay-200);
+      }
+    }
+    playPhrase(ac.currentTime+0.1);
+  }catch(e){ console.warn('Sacred music failed:',e); }
+}
+
+// ── CONFESSION SOUND (chime + soft bell) ─────────────────
+function playConfessionSound(){
+  try{
+    const ac=getAudio();
+    if(!ac||!isFinite(ac.currentTime))return;
+    const t=ac.currentTime;
+    const g=ac.createGain();
+    g.gain.setValueAtTime(0.001,t);
+    g.gain.linearRampToValueAtTime(0.4,t+0.05);
+    g.gain.exponentialRampToValueAtTime(0.001,t+1.8);
+    g.connect(ac.destination);
+    [523.25,659.25,783.99].forEach((freq,i)=>{
+      try{
+        const o=ac.createOscillator();
+        o.type='sine';
+        o.frequency.setValueAtTime(freq,t+i*0.12);
+        o.connect(g);
+        o.start(t+i*0.12); o.stop(t+2.0);
+      }catch(e){}
+    });
+  }catch(e){}
+}
 
 function startHymnMusic(){
   if(!musicEnabled||musicPlaying)return;
@@ -848,7 +960,7 @@ const GS={
   mode:'menu',stage:1,score:0,padrePioUnlocked:false,
   subMode:null,
   confessionCount:0,
-  planesRedirected:0,peopleHealed:0,
+  planesRedirected:0,angelsHelped:0,peopleHealed:0,
   bioIndex:0,
   rescued:0,collected:0,
   animTime:0
@@ -1054,6 +1166,8 @@ function clearScene(){
   entities.forEach(e=>{if(e.obj)scene.remove(e.obj);});
   entities=[];
   if(player.obj){scene.remove(player.obj);player.obj=null;}
+  // Clean up guardian angel
+  if(currentAngel){scene.remove(currentAngel);currentAngel=null;}
 }
 function addToScene(obj){scene.add(obj);sceneObjects.push(obj);return obj;}
 function addBuilding(obj, x, z, width, depth){
@@ -1495,23 +1609,23 @@ function spawnForStage(){
   const cfg=stageConfig(GS.stage);
   if(GS.subMode==='rescue'||GS.subMode==='transport'){
     for(let i=0;i<15;i++){
-      const pos = findValidSpawnPosition(20, 5);
-      createSurvivor(pos.x, pos.z);
+      const pos=findValidSpawnPosition(20,5);
+      createSurvivor(pos.x,pos.z);
     }
   } else if(GS.subMode==='shelter'){
-    // Alternating communion bread (host) and wine (chalice)
     for(let i=0;i<cfg.supplyCount;i++){
-      const pos = findValidSpawnPosition(15, 4);
-      createCommunionItem(pos.x, pos.z, i);
+      const pos=findValidSpawnPosition(15,4);
+      createCommunionItem(pos.x,pos.z,i);
     }
   } else if(GS.subMode==='flight'){
-    for(let i=0;i<7;i++)createPlane((Math.random()-0.5)*60,i*8-28);
+    for(let i=0;i<7;i++) createPlane((Math.random()-0.5)*60,i*8-28);
   } else if(GS.subMode==='healing'){
     for(let i=0;i<10;i++){
-      const pos = findValidSpawnPosition(12, 3);
-      createSickPerson(pos.x, pos.z);
+      const pos=findValidSpawnPosition(12,3);
+      createSickPerson(pos.x,pos.z);
     }
   }
+  // guardianangel: entities spawned one-at-a-time by spawnGuardianAngel()
 }
 
 // ── PLAYER PLACEMENT ─────────────────────────────────────
@@ -1609,7 +1723,16 @@ const stageCities=['Rome','Florence','Venice','Milan','Naples','Turin','Genoa','
 
 // ── HUD ──────────────────────────────────────────────────
 function updateHUD(){
-  document.getElementById('hStage').textContent=`${GS.stage}/9`;
+  // Stage label — context-aware for each mode
+  if(GS.mode==='game'){
+    document.getElementById('hStage').textContent=`${GS.stage}/9`;
+  } else if(GS.mode==='padrepio'){
+    document.getElementById('hStage').textContent='Padre Pio';
+  } else if(GS.mode==='therese'){
+    document.getElementById('hStage').textContent=`${(TS.eventIndex||0)+1}/${thereseEvents.length}`;
+  } else {
+    document.getElementById('hStage').textContent='—';
+  }
   document.getElementById('hScore').textContent=GS.score;
   let goal='—';
   if(GS.subMode==='rescue')goal=`Rescued ${GS.rescued}/15`;
@@ -1617,11 +1740,12 @@ function updateHUD(){
   else if(GS.subMode==='shelter')goal=`Supplies ${GS.collected}/${stageConfig(GS.stage).supplyCount}`;
   else if(GS.subMode==='confession')goal=`Confessions ${GS.confessionCount}/10`;
   else if(GS.subMode==='flight')goal=`Planes ${GS.planesRedirected}/7`;
+  else if(GS.subMode==='guardianangel')goal=`Angels ${GS.angelsHelped}/5`;
   else if(GS.subMode==='healing')goal=`Healed ${GS.peopleHealed}/10`;
   else if(GS.subMode==='bio')goal=`Life ${GS.bioIndex+1}/${lifeEvents.length}`;
   document.getElementById('hGoal').textContent=goal;
-  const totals={rescue:15,transport:15,shelter:stageConfig(GS.stage).supplyCount,confession:10,flight:7,healing:10,bio:lifeEvents.length};
-  const curr={rescue:GS.rescued,transport:GS.rescued,shelter:GS.collected,confession:GS.confessionCount,flight:GS.planesRedirected,healing:GS.peopleHealed,bio:GS.bioIndex+1};
+  const totals={rescue:15,transport:15,shelter:stageConfig(GS.stage).supplyCount,confession:10,flight:7,guardianangel:5,healing:10,bio:lifeEvents.length};
+  const curr={rescue:GS.rescued,transport:GS.rescued,shelter:GS.collected,confession:GS.confessionCount,flight:GS.planesRedirected,guardianangel:GS.angelsHelped,healing:GS.peopleHealed,bio:GS.bioIndex+1};
   const pct=GS.subMode&&totals[GS.subMode]?(curr[GS.subMode]||0)/totals[GS.subMode]*100:0;
   document.getElementById('progressBar').style.width=pct+'%';
 }
@@ -1724,6 +1848,7 @@ function triggerNextConfession(){
     t+=0.04;penitent.position.z=-6+t*4;penitent.position.x=-4;
     if(t>=1){
       clearInterval(walk);scene.remove(penitent);
+      playConfessionSound();
       showDialog(`<h3>Penitent #${GS.confessionCount+1}:</h3><em>"${confessionTexts[i]}"</em><br><br><strong>Padre Pio:</strong> "${padrePioResponses[i]}"<br><br><span class="t-btn" onclick="(function(){GS.confessionCount++;GS.score+=50;spawnParticles(-4,3,0,0xffd700,8);confessionBusy=false;updateHUD();hideDialog();if(GS.confessionCount>=10)confessionComplete();})()">✝ Grant Absolution</span>`,0);
     }
   },40);
@@ -1801,26 +1926,47 @@ function initGuardianAngelMode(){
   showDialog('<h3>Padre Pio and the Guardian Angels</h3><br>"I have made a pact with my guardian angel: at night he prays and I sleep, during the day I work and he stands watch." - Padre Pio<br><br>Listen to the guardian angels and help those they represent!<br><br><span class="t-btn" onclick="hideDialog();spawnGuardianAngel()">▶ Begin</span>',0);
 }
 
+// Track current angel for clean removal
+let currentAngel = null;
+
+function acknowledgeAngel(){
+  GS.angelsHelped++;
+  GS.score+=100;
+  if(currentAngel){ scene.remove(currentAngel); currentAngel=null; }
+  spawnParticles(-4,2,0,0xffd700,16);
+  updateHUD();
+  hideDialog();
+  setTimeout(()=>spawnGuardianAngel(), 600);
+}
+
 function spawnGuardianAngel(){
-  if(GS.angelsHelped>=5){
-    guardianAngelComplete();
-    return;
-  }
-  
+  if(GS.angelsHelped>=5){ guardianAngelComplete(); return; }
+
   const story = guardianAngelStories[GS.angelsHelped];
   const angel = buildGuardianAngel();
-  angel.position.set(2,0,0);
+  angel.position.set(14,0.5,0);
   scene.add(angel);
-  
-  // Angel floats toward Padre Pio
+  currentAngel = angel;
+
+  // Float toward Padre Pio
   let t=0;
   const approach=setInterval(()=>{
+    if(!currentAngel){ clearInterval(approach); return; }
     t+=0.02;
-    angel.position.x=2-t*6;
-    angel.position.y=Math.sin(t*4)*0.15+0.5;
+    angel.position.x = 14 - t*90;
+    angel.position.y = Math.sin(t*5)*0.2 + 0.8;
+    // Gentle wing flap
+    const wings = angel.children.filter(c=>c.geometry&&c.geometry.type==='BoxGeometry'&&c.position.x!==0);
+    wings.forEach((w,i)=>{ w.rotation.z = (i===0?-1:1)*(0.3+Math.sin(t*8)*0.15); });
     if(t>=0.5){
       clearInterval(approach);
-      showDialog('<h3>Guardian Angel Message</h3><br><strong>Representing:</strong> '+story.person+'<br><br><em>'+story.story+'</em><br><br><span class="t-btn" onclick="(function(){GS.angelsHelped++;GS.score+=100;scene.children.find(c=>c.userData&&c.userData.isAngel)&&scene.remove(scene.children.find(c=>c.userData&&c.userData.isAngel));spawnParticles(-4,2,0,0xffd700,12);updateHUD();hideDialog();spawnGuardianAngel();})()">✝ Acknowledge & Pray</span>',0);
+      showDialog(
+        '<h3>👼 Guardian Angel Message</h3><br>'+
+        '<strong>Representing: '+story.person+'</strong><br><br>'+
+        '<em>'+story.story+'</em><br><br>'+
+        '<span class="t-btn" onclick="acknowledgeAngel()">✝ Acknowledge &amp; Pray</span>',
+        0
+      );
     }
   },30);
 }
@@ -2035,21 +2181,62 @@ function startStoryMode(){
 
 function startPadrePioMode(){
   document.getElementById('menu').style.display='none';
-  GS.mode='padrepio';GS.score=0;
-  GS.confessionCount=0;GS.planesRedirected=0;GS.peopleHealed=0;
-  confessionIdx=0;confessionBusy=false;
+  GS.mode='padrepio';
+  GS.score=0;
+  GS.confessionCount=0;
+  GS.planesRedirected=0;
+  GS.angelsHelped=0;
+  GS.peopleHealed=0;
+  confessionIdx=0;
+  confessionBusy=false;
+  healCooldown=0;
+  currentAngel=null;
+  flightCamAngle=0;
   document.getElementById('hStage').textContent='Padre Pio';
-  startItalianMusic();
-  showIsaiahCall(() => initConfessionMode());
+  startSacredMusic();
+  showIsaiahCall(()=>initConfessionMode());
 }
 
 function returnToMenu(){
   clearScene();
-  entities.forEach(e=>{if(e.obj)scene.remove(e.obj);});entities=[];
+  stopMusic();
   document.getElementById('menu').style.display='flex';
   document.getElementById('actionBtn').classList.remove('visible');
-  document.getElementById('cameraJoy').classList.remove('visible'); // Hide camera joystick
+  document.getElementById('cameraJoy').classList.remove('visible');
   hideDialog();
+  // Reset all game state so modes start fresh
+  GS.mode='menu';
+  GS.subMode=null;
+  GS.stage=1;
+  GS.score=0;
+  GS.confessionCount=0;
+  GS.planesRedirected=0;
+  GS.angelsHelped=0;
+  GS.peopleHealed=0;
+  GS.rescued=0;
+  GS.collected=0;
+  GS.bioIndex=0;
+  GS.animTime=0;
+  // Reset Padre Pio internals
+  confessionIdx=0;
+  confessionBusy=false;
+  healCooldown=0;
+  currentAngel=null;
+  flightCamAngle=0;
+  // Reset Therese internals
+  TS.eventIndex=0;
+  TS.taskComplete=false;
+  TS.prayCount=0;
+  TS.collectCount=0;
+  TS.collectTarget=0;
+  TS.waitTimer=0;
+  TS.waitDone=false;
+  TS.navReached=false;
+  TS.pilgrimsHelped=0;
+  TS.fakesAvoided=0;
+  TS.discernTarget=null;
+  TS.pilgrims=[];
+  TS.shadowEntities=[];
 }
 
 // ── CONFESSION INTERVAL — BUG FIX ────────────────────────
@@ -2255,6 +2442,17 @@ function updateHealing(){
   if(actionJustPressed())tryHeal();
 }
 
+function updateGuardianAngel(){
+  // Pulse the current angel's light and gently bob if present
+  if(currentAngel){
+    currentAngel.position.y = 0.8 + Math.sin(GS.animTime*2)*0.1;
+    currentAngel.rotation.y += 0.008;
+    // Pulse halo glow
+    const halo = currentAngel.children.find(c=>c.geometry&&c.geometry.type==='TorusGeometry');
+    if(halo) halo.material.emissiveIntensity = 1.0 + Math.sin(GS.animTime*3)*0.4;
+  }
+}
+
 // ── MAIN UPDATE ──────────────────────────────────────────
 let lastTime=0;
 function update(ts){
@@ -2338,6 +2536,7 @@ function update(ts){
   else if(GS.subMode==='shelter')updateShelter();
   else if(GS.subMode==='flight')updateFlight();
   else if(GS.subMode==='healing')updateHealing();
+  else if(GS.subMode==='guardianangel')updateGuardianAngel();
   // NOTE: confession updates via setInterval only — no duplicate call here
 
   if(GS.mode==='therese')updateThereseMode();
@@ -2612,6 +2811,8 @@ const TS = {
   waitTarget: 300, // 5 seconds at 60fps
   waitDone: false,
   discernTarget: null,
+  fakesAvoided: 0,
+  fakeTarget: 6,
   pilgrims: [],
   pilgrimsHelped: 0,
   shadowEntities: []
@@ -3080,6 +3281,9 @@ function startThereseMode() {
   showIsaiahCall(() => showThereseEvent(0));
 }
 
+// Alias so dialog buttons can call loadThereseEvent(index) to retry a stage
+function loadThereseEvent(index){ showThereseEvent(index); }
+
 function showThereseEvent(index) {
   if (index >= thereseEvents.length) { endThereseMode(); return; }
   const ev = thereseEvents[index];
@@ -3273,22 +3477,26 @@ function checkThereseTask() {
 
   // ── Identify fake relics/clergy (AVOID them) ───────────
   } else if (ev.interactive === 'identify_fake') {
+    let hitFake = false;
     entities.forEach(e => {
       if ((e.type === 'fake_relic' || e.type === 'fake_clergy') && !e.collected) {
         const dx = e.obj.position.x - player.x;
         const dz = e.obj.position.z - player.z;
-        const dist = Math.sqrt(dx*dx + dz*dz);
-        if (dist < 1.5) {
-          // FAILED - touched a fake
+        if (Math.sqrt(dx*dx + dz*dz) < 1.5) {
           e.collected = true;
-          showDialog('<h3>⚠ Fake Detected!</h3><br>Therese sensed deception. Avoid dark/dim objects and clergy!<br><br><span class="t-btn" onclick="hideDialog();loadThereseEvent(TS.eventIndex)">Try Again</span>',0);
+          hitFake = true;
         }
       }
     });
-    // Check if player avoided all fakes and reached safe area
-    const allAvoided = entities.filter(e=>(e.type==='fake_relic'||e.type==='fake_clergy')&&!e.collected).length === 6;
-    if (allAvoided && Math.abs(player.x) < 2 && Math.abs(player.z) < 2) {
-      completeThereseTask();
+    if(hitFake){
+      // Reset all fakes and try again
+      showDialog('<h3>⚠ Fake Detected!</h3><br>Therese sensed deception — she would turn away in distress from counterfeits. Avoid the dim, dark objects!<br><br><span class="t-btn" onclick="loadThereseEvent(TS.eventIndex)">Try Again</span>',0);
+    } else {
+      // Task complete: reach center without touching any fake
+      const touched = entities.filter(e=>(e.type==='fake_relic'||e.type==='fake_clergy')&&e.collected).length;
+      if(touched === 0 && Math.abs(player.x) < 2.5 && Math.abs(player.z) < 2.5){
+        completeThereseTask();
+      }
     }
 
   // ── Identify real relics/clergy (COLLECT them) ─────────
@@ -3706,6 +3914,32 @@ const thereseBookPassages = [
         text: '"The process of beatification moves slowly, as it should. The Church is not in a hurry when it comes to declaring a soul to be in the presence of God. She takes decades, sometimes centuries. She examines everything. She plays devil\'s advocate with a thoroughness that would satisfy any court. This is as it should be. The evidence assembled for the cause of Therese Neumann is extraordinary in its quantity, its quality, and its breadth. It covers six decades. It includes medical testimony, scientific investigation, the sworn statements of bishops and cardinals, the personal testimonies of thousands. I have spent years studying this evidence. I have found no fraud, no self-deception, no hysteria, no explicable natural cause for the central phenomena. I have found a woman who was, in the strictest and most verifiable sense of the word, holy. The Church will confirm this in her own time. Servant of God Therese Neumann, pray for us."'
       }
     ]
+  },
+  // 14: Gift of Discernment — Spotting Fakes
+  {
+    pages: [
+      {
+        source: 'Fr. Josef Naber, parish diary entry, 1935 (quoted in Johannes Steiner, "Therese Neumann: A Portrait Based on Authentic Accounts, Journals, and Documents," Alba House, 1967, Ch. 12)',
+        text: '"I have witnessed on numerous occasions Therese\'s ability to identify authentic relics. When presented with a glass reliquary containing a purported relic of a saint — without being told its provenance or even which saint it was said to represent — she would enter a state of intense concentration, and then, more often than not, an ecstasy. Her identification of the saint was subsequently confirmed from the diocesan register. When presented with a relic that had been substituted — a pious fraud — she turned away immediately, visibly distressed, and said only: \'That is not right.\' She could not explain how she knew. She did not need to. The phenomenon was consistent and repeated. It cannot be attributed to coincidence or cold reading. She had no access to the reliquary records. Her gift of discernment was real."'
+      },
+      {
+        source: 'Bishop Michael Buchberger of Regensburg, pastoral letter, 1937 (quoted in Hanley, "Therese Neumann: Mystic and Stigmatist," Ch. 9)',
+        text: '"Among the gifts attributed to Therese Neumann, the gift of discernment stands out for its practical and verifiable character. She could identify authentic clergy from impostors. During one visit by a group of religious, she addressed a lay visitor who had dressed as a priest: \'You are not a priest.\' He was not. She could not have known this by ordinary means; his dress was faultless and he had said nothing to betray himself. When asked how she knew, she replied: \'Something is missing in him.\' The ability to perceive the absence of holy orders — an invisible, spiritual reality — by a direct supernatural sense is precisely the kind of charism that the Church has always recognized in her mystics. I have investigated these accounts. I am satisfied that they are authentic."'
+      }
+    ]
+  },
+  // 15: True Relics — Mystical Recognition
+  {
+    pages: [
+      {
+        source: 'Dr. Fritz Gerlich, "Therese Neumann von Konnersreuth: A Catholic Study" (Munich, 1929), Part III, translated and quoted in Hanley, Ch. 8',
+        text: '"I approached the investigation of Therese Neumann as a scientist and a journalist, with every intention of exposing what I assumed to be a provincial fraud. I was wrong. What I encountered at Konnersreuth was not fraud. It was not hysteria. It was not suggestion or self-deception. The incident that struck me most forcibly concerned an experiment conducted by a theologian accompanying me. He presented Therese with two small reliquaries: one authentic, one containing a fragment of ordinary bone. He did not tell her which was which. Without hesitation, she reached for the authentic relic, held it, and immediately entered a mild ecstasy. She held the other for a moment, then set it down: \'This one is not from a saint.\' The theologian confirmed her identification was correct. I am a man of reason. I do not accept the supernatural easily. But the evidence before me did not permit a natural explanation. I subsequently converted to Catholicism. I believe Therese Neumann was what she appeared to be: a genuine mystic, bearing genuine gifts from God."'
+      },
+      {
+        source: 'Fr. Boniface Hanley OFM, "Therese Neumann: Mystic and Stigmatist," Ch. 10 (Franciscan Herald Press, 1980)',
+        text: '"The gift of discerning true relics and authentic consecrated persons was not merely a curiosity in Therese\'s life. It served a pastoral purpose. In the turbulent 1930s and 1940s, when Germany was flooded with false clergy, state-sponsored pseudo-religious movements, and deliberate counterfeits of sacred objects designed to confuse the faithful, Therese\'s discernment was a practical spiritual protection. Pilgrims brought her objects. She identified the genuine ones and returned the false ones. Priests brought her doubts about their own vocations; she affirmed or gently questioned with a certainty that came from somewhere beyond human knowledge. The Church does not beatify mystics because their gifts are interesting. She beatifies them because their lives, taken as a whole, manifested heroic virtue and authentic holiness. Therese\'s discernment was one expression of that holiness — not the most important, but perhaps the most immediately visible to those who came to her."'
+      }
+    ]
   }
 ];
 
@@ -3865,6 +4099,5 @@ document.getElementById('actionBtn').onclick = () => {
   else triggerAction();
 };
 </script>
-
 </body>
 </html>
