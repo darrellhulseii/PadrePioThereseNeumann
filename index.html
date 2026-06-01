@@ -949,12 +949,6 @@ function actionJustPressed(){
 }
 function triggerAction(){touchInput.action=true;setTimeout(()=>{touchInput.action=false;},150);}
 
-// Plane tap on canvas
-document.getElementById('c').addEventListener('touchstart',e=>{
-  checkPlaneTap(e.touches[0].clientX,e.touches[0].clientY);
-},{passive:true});
-document.getElementById('c').addEventListener('click',e=>{checkPlaneTap(e.clientX,e.clientY);});
-
 // ── GAME STATE ───────────────────────────────────────────
 const GS={
   mode:'menu',stage:1,score:0,padrePioUnlocked:false,
@@ -1874,31 +1868,6 @@ function initFlightMode(){
   showDialog('<h3>'+ppQuotes[6]+'</h3><br><strong>SINGLE JOYSTICK FLIGHT:</strong><br>↑ Fly forward<br>↓ Fly backward<br>← Turn left while moving left<br>→ Turn right while moving right<br><br>Get close to planes to redirect!<br><br><span class="t-btn" onclick="hideDialog()">▶ Begin</span>',0);
 }
 
-const raycaster=new THREE.Raycaster();
-const mouse2d=new THREE.Vector2();
-
-function checkPlaneTap(cx,cy){
-  if(GS.subMode!=='flight')return;
-  mouse2d.x=(cx/innerWidth)*2-1;
-  mouse2d.y=-(cy/innerHeight)*2+1;
-  raycaster.setFromCamera(mouse2d,camera);
-  const meshes=[];
-  entities.filter(e=>e.type==='plane'&&!e.redirected).forEach(e=>e.obj.traverse(c=>{if(c.isMesh)meshes.push(c);}));
-  const hits=raycaster.intersectObjects(meshes);
-  if(hits.length){
-    const hit=hits[0].object;
-    const e=entities.find(en=>en.type==='plane'&&en.obj&&(en.obj===hit||en.obj===hit.parent));
-    if(e&&!e.redirected){
-      e.redirected=true;
-      e.obj.traverse(c=>{if(c.material)c.material.color.set(0x00dd44);});
-      GS.planesRedirected++;GS.score+=75;
-      spawnParticles(e.obj.position.x,e.obj.position.y,e.obj.position.z,0x00ff88,15);
-      updateHUD();
-      if(GS.planesRedirected>=7)flightComplete();
-    }
-  }
-}
-
 function flightComplete(){
   const d=ppPrayers.planesComplete;
   showDialog('<h3>✈ All planes redirected!</h3><em>'+d.quote+'</em><br><br>'+d.prayer+'<br><br><span class="t-btn" onclick="hideDialog();initGuardianAngelMode()">✝ Continue to Guardian Angels ▶</span>',0);
@@ -2093,6 +2062,7 @@ function showBioEvent(index){
 function advanceBio(){GS.bioIndex++;showBioEvent(GS.bioIndex);}
 
 function endGame(){
+  stopMusic();
   hideDialog();
   showDialog(`<h3>🕊 Padre Pio's Legacy Lives On 🕊</h3><br>You have walked the path of Saint Pio of Pietrelcina — priest, mystic, stigmatist, healer, and beloved son of Italy.<br><br><em>"I belong entirely to everyone. Everyone can say: Padre Pio is mine."</em><br><br><strong>— Saint Pio of Pietrelcina (1887–1968)</strong><br><br>Final Score: <strong>${GS.score}</strong><br><br><span class="t-btn" style="border-color:#ffd700;color:#ffd700;" onclick="hideDialog();returnToMenu()">▶ Return to Menu</span>`,0);
   document.getElementById('actionBtn').innerHTML='MENU';
@@ -2175,8 +2145,9 @@ function showIsaiahCall(onContinue) {
 function startStoryMode(){
   document.getElementById('menu').style.display='none';
   GS.mode='game';GS.stage=1;GS.score=0;GS.rescued=0;GS.collected=0;
+  stopMusic();
   startItalianMusic();
-  showIsaiahCall(() => initRescueStage());
+  showIsaiahCall(()=>initRescueStage());
 }
 
 function startPadrePioMode(){
@@ -2193,6 +2164,7 @@ function startPadrePioMode(){
   currentAngel=null;
   flightCamAngle=0;
   document.getElementById('hStage').textContent='Padre Pio';
+  stopMusic();
   startSacredMusic();
   showIsaiahCall(()=>initConfessionMode());
 }
@@ -3277,6 +3249,7 @@ function startThereseMode() {
   GS.mode = 'therese';
   GS.score = 0;
   TS.eventIndex = 0;
+  stopMusic();
   startHymnMusic();
   showIsaiahCall(() => showThereseEvent(0));
 }
@@ -4051,6 +4024,7 @@ function completeThereseTask() {
 }
 
 function endThereseMode() {
+  stopMusic();
   clearScene();
   buildChurchInterior();
   placePlayer(0, 0, false);
