@@ -2202,6 +2202,7 @@ function returnToMenu(){
   TS.collectCount=0;
   TS.collectTarget=0;
   TS.waitTimer=0;
+  TS.waitTarget=300;
   TS.waitDone=false;
   TS.navReached=false;
   TS.pilgrimsHelped=0;
@@ -3308,8 +3309,10 @@ function showThereseEvent(index) {
     spawnRelics();
   } else if (ev.interactive === 'identify_fake') {
     spawnFakeRelicsAndClergy();
+    document.getElementById('hGoal').textContent = 'Avoid Fakes — reach center safely';
   } else if (ev.interactive === 'identify_real') {
     spawnRealRelicsAndClergy();
+    document.getElementById('hGoal').textContent = 'Genuine: 0/'+TS.collectTarget;
   } else if (ev.interactive === 'pray' && ev.title === "Therese's Teachings & Counsel") {
     spawnPilgrims(4);
   }
