@@ -3318,19 +3318,48 @@ function showThereseEvent(index) {
   }
 
   document.getElementById('hStage').textContent = `${index+1}/${thereseEvents.length}`;
-  if (ev.title === 'The Inedia — Living Without Food') {
-    document.getElementById('hGoal').textContent = 'Collect Bread & Wine (0/4)';
-  } else {
+  // Set specific goal text per interactive type
+  if (ev.interactive === 'walk') {
+    document.getElementById('hGoal').textContent = 'Walk away from the village';
+  } else if (ev.interactive === 'wait') {
+    document.getElementById('hGoal').textContent = 'Wait in prayer…';
+  } else if (ev.interactive === 'collect') {
+    if (ev.title === 'The Inedia — Living Without Food') {
+      document.getElementById('hGoal').textContent = 'Collect Bread & Wine (0/4)';
+    } else if (ev.title === 'First Miraculous Healing') {
+      document.getElementById('hGoal').textContent = `Healed: 0/${TS.collectTarget}`;
+    } else {
+      document.getElementById('hGoal').textContent = `Collect: 0/${TS.collectTarget}`;
+    }
+  } else if (ev.interactive === 'navigate') {
+    document.getElementById('hGoal').textContent = 'Reach the cross — avoid shadows';
+  } else if (ev.interactive === 'pray') {
+    if (ev.title === "Therese's Teachings & Counsel") {
+      document.getElementById('hGoal').textContent = 'Counsel pilgrims: 0/4';
+    } else if (ev.title === 'The Friday Passion Ecstasies') {
+      document.getElementById('hGoal').textContent = 'Stations: 0/5';
+    } else {
+      document.getElementById('hGoal').textContent = 'Press PRAY ✝';
+    }
+  } else if (ev.interactive === 'discern') {
+    document.getElementById('hGoal').textContent = 'Find the holy relic';
+  } else if (ev.interactive === 'final') {
+    document.getElementById('hGoal').textContent = 'Stand before the altar & PRAY';
+  } else if (ev.interactive !== 'identify_fake' && ev.interactive !== 'identify_real') {
     document.getElementById('hGoal').textContent = ev.title;
   }
   document.getElementById('progressBar').style.width = ((index / thereseEvents.length) * 100) + '%';
 
   const actionBtn = document.getElementById('actionBtn');
-  // Show PRAY button for pray/final/discern/counsel stages — not for collect/walk/navigate/wait
-  const needsActionBtn = ev.interactive === 'pray' || ev.interactive === 'final' || ev.interactive === 'discern';
+  // Show PRAY button for pray/final/discern/wait stages — not for collect/walk/navigate
+  const needsActionBtn = ev.interactive === 'pray' || ev.interactive === 'final' || ev.interactive === 'discern' || ev.interactive === 'wait';
   if (needsActionBtn) {
     actionBtn.classList.add('visible');
-    actionBtn.textContent = ev.interactive === 'wait' ? 'WAIT ✝' : '🙏 PRAY';
+    if (ev.interactive === 'wait') {
+      actionBtn.textContent = 'WAIT ✝';
+    } else {
+      actionBtn.textContent = '🙏 PRAY';
+    }
     actionBtn.onclick = () => triggerThereseAction();
   } else {
     actionBtn.classList.remove('visible');
